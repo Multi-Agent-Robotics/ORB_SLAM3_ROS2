@@ -15,13 +15,18 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# ROS2 packages
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(message_filters REQUIRED)
+
+# These are required for ORB_SLAM3
 find_package(Sophus REQUIRED)
+# set(Pangolin_DIR "~/.local/lib/cmake/Pangolin")
 find_package(Pangolin REQUIRED)
+set(ORB_SLAM3_DIR "~/.local/lib/cmake/ORB_SLAM3")
 find_package(ORB_SLAM3 REQUIRED)
 
 include_directories(

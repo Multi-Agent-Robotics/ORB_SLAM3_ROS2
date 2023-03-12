@@ -9,7 +9,7 @@ set(ORB_SLAM3_ROOT_DIR "$ENV{ORB_SLAM3_ROOT_DIR}")
 
 # message(${ORB_SLAM3_ROOT_DIR})
 # message(${ORB_SLAM3_ROOT_DIR}/include)
-# message(${ORB_SLAM3_ROOT_DIR}/Thirdparty/DBoW2/DBoW2)
+# message(${ORB_SLAM3_ROOT_DIR}/3rdparty/DBoW2/DBoW2)
 
 # Find ORB_SLAM3
 find_path(ORB_SLAM3_INCLUDE_DIR NAMES System.h
@@ -19,15 +19,15 @@ find_library(ORB_SLAM3_LIBRARY NAMES ORB_SLAM3 libORB_SLAM3
              PATHS ${ORB_SLAM3_ROOT_DIR}/lib)
 
 # Find built-in DBoW2
-find_path(DBoW2_INCLUDE_DIR NAMES Thirdparty/DBoW2/DBoW2/BowVector.h
+find_path(DBoW2_INCLUDE_DIR NAMES 3rdparty/DBoW2/DBoW2/BowVector.h
           PATHS ${ORB_SLAM3_ROOT_DIR})
 
 find_library(DBoW2_LIBRARY NAMES DBoW2
-             PATHS ${ORB_SLAM3_ROOT_DIR}/Thirdparty/DBoW2/lib)
+             PATHS ${ORB_SLAM3_ROOT_DIR}/3rdparty/DBoW2/lib)
 
 # Find built-in g2o
 find_library(g2o_LIBRARY NAMES g2o
-             PATHS ${ORB_SLAM3_ROOT_DIR}/Thirdparty/g2o/lib)
+             PATHS ${ORB_SLAM3_ROOT_DIR}/3rdparty/g2o/lib)
 
 
 

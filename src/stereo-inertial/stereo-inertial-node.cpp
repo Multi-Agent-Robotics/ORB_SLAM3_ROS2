@@ -2,111 +2,131 @@
 
 #include <opencv2/core/core.hpp>
 
+#include <chrono>
+#include <cstdio>
+
+using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const string &strSettingsFile, const string &strDoRectify, const string &strDoEqual) :
-    Node("ORB_SLAM3_ROS2"),
-    SLAM_(SLAM)
+
+
+StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const string& settings_filepath, bool do_rectify, bool do_equalize) :
+    Node("orbslam3"),
+    this->orbslam3_system(SLAM),
+    this->do_rectify(do_rectify),
+    this->do_equalize(do_equalize),
+    this->apply_clahe(do_equalize)
 {
-    stringstream ss_rec(strDoRectify);
-    ss_rec >> boolalpha >> doRectify_;
-
-    stringstream ss_eq(strDoEqual);
-    ss_eq >> boolalpha >> doEqual_;
-
-    bClahe_ = doEqual_;
-    std::cout << "Rectify: " << doRectify_ << std::endl;
-    std::cout << "Equal: " << doEqual_ << std::endl;
-
-    if (doRectify_)
+    if (this->do_rectify)
     {
         // Load settings related to stereo calibration
-        cv::FileStorage fsSettings(strSettingsFile, cv::FileStorage::READ);
-        if (!fsSettings.isOpened())
+        auto settings cv::FileStorage(settings_filepath, cv::FileStorage::READ);
+        if (!settings.isOpened())
         {
             cerr << "ERROR: Wrong path to settings" << endl;
-            assert(0);
+            std::exit(1);
         }
 
-        cv::Mat K_l, K_r, P_l, P_r, R_l, R_r, D_l, D_r;
-        fsSettings["LEFT.K"] >> K_l;
-        fsSettings["RIGHT.K"] >> K_r;
+        cv::Mat left_K, right_K, left_P, right_P, left_R, right_R, left_D, right_D;
+        
+        settings["LEFT.K"] >> left_K;
+        settings["RIGHT.K"] >> right_K;
 
-        fsSettings["LEFT.P"] >> P_l;
-        fsSettings["RIGHT.P"] >> P_r;
+        settings["LEFT.P"] >> left_P;
+        settings["RIGHT.P"] >> right_P;
 
-        fsSettings["LEFT.R"] >> R_l;
-        fsSettings["RIGHT.R"] >> R_r;
+        settings["LEFT.R"] >> left_R;
+        settings["RIGHT.R"] >> right_R;
 
-        fsSettings["LEFT.D"] >> D_l;
-        fsSettings["RIGHT.D"] >> D_r;
+        settings["LEFT.D"] >> left_D;
+        settings["RIGHT.D"] >> right_D;
 
-        int rows_l = fsSettings["LEFT.height"];
-        int cols_l = fsSettings["LEFT.width"];
-        int rows_r = fsSettings["RIGHT.height"];
-        int cols_r = fsSettings["RIGHT.width"];
+        int rows_l = settings["LEFT.height"];
+        int cols_l = settings["LEFT.width"];
+        int rows_r = settings["RIGHT.height"];
+        int cols_r = settings["RIGHT.width"];
 
-        if (K_l.empty() || K_r.empty() || P_l.empty() || P_r.empty() || R_l.empty() || R_r.empty() || D_l.empty() || D_r.empty() ||
+        if (left_K.empty() || right_K.empty() || left_P.empty() || right_P.empty() || left_R.empty() || right_R.empty() || left_D.empty() || right_D.empty() ||
             rows_l == 0 || rows_r == 0 || cols_l == 0 || cols_r == 0)
         {
             cerr << "ERROR: Calibration parameters to rectify stereo are missing!" << endl;
-            assert(0);
+            std::exit(1);
         }
 
-        cv::initUndistortRectifyMap(K_l, D_l, R_l, P_l.rowRange(0, 3).colRange(0, 3), cv::Size(cols_l, rows_l), CV_32F, M1l_, M2l_);
-        cv::initUndistortRectifyMap(K_r, D_r, R_r, P_r.rowRange(0, 3).colRange(0, 3), cv::Size(cols_r, rows_r), CV_32F, M1r_, M2r_);
+        cv::initUndistortRectifyMap(left_K, left_D, left_R, left_P.rowRange(0, 3).colRange(0, 3), cv::Size(cols_l, rows_l), CV_32F, M1l_, M2l_);
+        cv::initUndistortRectifyMap(right_K, right_D, right_R, right_P.rowRange(0, 3).colRange(0, 3), cv::Size(cols_r, rows_r), CV_32F, M1r_, M2r_);
     }
 
-    subImu_ = this->create_subscription<ImuMsg>("imu", 1000, std::bind(&StereoInertialNode::GrabImu, this, _1));
-    subImgLeft_ = this->create_subscription<ImageMsg>("camera/left", 100, std::bind(&StereoInertialNode::GrabImageLeft, this, _1));
-    subImgRight_ = this->create_subscription<ImageMsg>("camera/right", 100, std::bind(&StereoInertialNode::GrabImageRight, this, _1));
+    this->sub_imu = this->create_subscription<ImuMsg>("imu", 1000, std::bind(&StereoInertialNode::grab_imu, this, _1));
+    this->sub_img_left = this->create_subscription<ImageMsg>("camera/left", 100, std::bind(&StereoInertialNode::grab_image_left, this, _1));
+    this->sub_img_right = this->create_subscription<ImageMsg>("camera/right", 100, std::bind(&StereoInertialNode::grab_image_right, this, _1));
 
-    syncThread_ = new std::thread(&StereoInertialNode::SyncWithImu, this);
+    this->sync_thread = new std::thread(&StereoInertialNode::sync_with_imu, this);
+
+    // Publishers 
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+    this->pub_imu = this->create_publisher<ImuMsg>("imu_corrected", qos);
+    this->pub_imu_timer = this->create_wall_timer(
+        100ms,
+        std::bind(&StereoInertialNode::pub_imu_callback, this)
+    );
 }
+
+auto StereoInertialNode::pub_imu_callback() -> void
+{
+    std::scoped_lock<std::mutex> lock(this->mutex_imu);
+
+    while (!this->imubuf.empty())
+    {
+        this->pub_imu->publish(this->imubuf.front());
+        this->imubuf.pop();
+    }
+}
+
 
 StereoInertialNode::~StereoInertialNode()
 {
     // Delete sync thread
-    syncThread_->join();
-    delete syncThread_;
+    this->sync_thread->join();
+    delete this->sync_thread;
 
     // Stop all threads
-    SLAM_->Shutdown();
+    this->orbslam3_system->Shutdown();
 
+    // TODO: create a parameter to save the trajectory
     // Save camera trajectory
-    SLAM_->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    this->orbslam3_system->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 }
 
-void StereoInertialNode::GrabImu(const ImuMsg::SharedPtr msg)
+void StereoInertialNode::grab_imu(const ImuMsg::SharedPtr msg)
 {
-    bufMutex_.lock();
-    imuBuf_.push(msg);
-    bufMutex_.unlock();
+    std::scoped_lock<std::mutex> lock(this->mutex_imu);
+    this->imubuf.push(msg);
 }
 
-void StereoInertialNode::GrabImageLeft(const ImageMsg::SharedPtr msgLeft)
+void StereoInertialNode::grab_image_left(const ImageMsg::SharedPtr msgLeft)
 {
-    bufMutexLeft_.lock();
+    std::scoped_lock<std::mutex> lock(this->mutex_img_left);
 
-    if (!imgLeftBuf_.empty())
-        imgLeftBuf_.pop();
-    imgLeftBuf_.push(msgLeft);
+    if (!this->img_left_buf.empty()) {
+        this->img_left_buf.pop();
+    }
 
-    bufMutexLeft_.unlock();
+    this->img_left_buf.push(msgLeft);
 }
 
-void StereoInertialNode::GrabImageRight(const ImageMsg::SharedPtr msgRight)
+void StereoInertialNode::grab_image_right(const ImageMsg::SharedPtr msgRight)
 {
-    bufMutexRight_.lock();
+    std::scoped_lock<std::mutex> lock(this->mutex_img_right);
 
-    if (!imgRightBuf_.empty())
-        imgRightBuf_.pop();
-    imgRightBuf_.push(msgRight);
+    if (!this->img_right_buf.empty()) {
+        this->img_right_buf.pop();
+    }
 
-    bufMutexRight_.unlock();
+    this->img_right_buf.push(msgRight);
 }
 
-cv::Mat StereoInertialNode::GetImage(const ImageMsg::SharedPtr msg)
+auto StereoInertialNode::get_image(const ImageMsg::SharedPtr msg) -> cv::Mat
 {
     // Copy the ros image message to cv::Mat.
     cv_bridge::CvImageConstPtr cv_ptr;
@@ -131,86 +151,94 @@ cv::Mat StereoInertialNode::GetImage(const ImageMsg::SharedPtr msg)
     }
 }
 
-void StereoInertialNode::SyncWithImu()
+auto StereoInertialNode::sync_with_imu() -> void
 {
-    const double maxTimeDiff = 0.01;
+    const double max_time_diff = 0.01; // 10ms
 
-    while (1)
+    while (true)
     {
-        cv::Mat imLeft, imRight;
-        double tImLeft = 0, tImRight = 0;
-        if (!imgLeftBuf_.empty() && !imgRightBuf_.empty() && !imuBuf_.empty())
+        // Declared here to avoid memory allocation in the loop
+        cv::Mat img_left, img_right;
+        double time_img_left = 0, time_img_right = 0;
+
+        if (!this->img_left_buf.empty() && !this->img_right_buf.empty() && !this->imubuf.empty())
         {
-            tImLeft = Utility::StampToSec(imgLeftBuf_.front()->header.stamp);
-            tImRight = Utility::StampToSec(imgRightBuf_.front()->header.stamp);
+            time_img_left = Utility::StampToSec(this->img_left_buf.front()->header.stamp);
+            time_img_right = Utility::StampToSec(this->img_right_buf.front()->header.stamp);
 
-            bufMutexRight_.lock();
-            while ((tImLeft - tImRight) > maxTimeDiff && imgRightBuf_.size() > 1)
             {
-                imgRightBuf_.pop();
-                tImRight = Utility::StampToSec(imgRightBuf_.front()->header.stamp);
-            }
-            bufMutexRight_.unlock();
-
-            bufMutexLeft_.lock();
-            while ((tImRight - tImLeft) > maxTimeDiff && imgLeftBuf_.size() > 1)
-            {
-                imgLeftBuf_.pop();
-                tImLeft = Utility::StampToSec(imgLeftBuf_.front()->header.stamp);
-            }
-            bufMutexLeft_.unlock();
-
-            if ((tImLeft - tImRight) > maxTimeDiff || (tImRight - tImLeft) > maxTimeDiff)
-            {
-                std::cout << "big time difference" << std::endl;
-                continue;
-            }
-            if (tImLeft > Utility::StampToSec(imuBuf_.back()->header.stamp))
-                continue;
-
-            bufMutexLeft_.lock();
-            imLeft = GetImage(imgLeftBuf_.front());
-            imgLeftBuf_.pop();
-            bufMutexLeft_.unlock();
-
-            bufMutexRight_.lock();
-            imRight = GetImage(imgRightBuf_.front());
-            imgRightBuf_.pop();
-            bufMutexRight_.unlock();
-
-            vector<ORB_SLAM3::IMU::Point> vImuMeas;
-            bufMutex_.lock();
-            if (!imuBuf_.empty())
-            {
-                // Load imu measurements from buffer
-                vImuMeas.clear();
-                while (!imuBuf_.empty() && Utility::StampToSec(imuBuf_.front()->header.stamp) <= tImLeft)
+                std::scoped_lock<std::mutex> lock(this->mutex_img_right);
+                while ((time_img_left - time_img_right) > max_time_diff && this->img_right_buf.size() > 1)
                 {
-                    double t = Utility::StampToSec(imuBuf_.front()->header.stamp);
-                    cv::Point3f acc(imuBuf_.front()->linear_acceleration.x, imuBuf_.front()->linear_acceleration.y, imuBuf_.front()->linear_acceleration.z);
-                    cv::Point3f gyr(imuBuf_.front()->angular_velocity.x, imuBuf_.front()->angular_velocity.y, imuBuf_.front()->angular_velocity.z);
-                    vImuMeas.push_back(ORB_SLAM3::IMU::Point(acc, gyr, t));
-                    imuBuf_.pop();
+                    this->img_right_buf.pop();
+                    time_img_right = Utility::StampToSec(this->img_right_buf.front()->header.stamp);
                 }
             }
-            bufMutex_.unlock();
 
-            if (bClahe_)
             {
-                clahe_->apply(imLeft, imLeft);
-                clahe_->apply(imRight, imRight);
+                std::scoped_lock<std::mutex> lock(this->mutex_img_left);
+                while ((time_img_right - time_img_left) > max_time_diff && this->img_left_buf.size() > 1)
+                {
+                    this->img_left_buf.pop();
+                    time_img_left = Utility::StampToSec(this->img_left_buf.front()->header.stamp);
+                }
             }
 
-            if (doRectify_)
+            const double dt = std::abs(time_img_left - time_img_right);
+            if (dt > max_time_diff)
             {
-                cv::remap(imLeft, imLeft, M1l_, M2l_, cv::INTER_LINEAR);
-                cv::remap(imRight, imRight, M1r_, M2r_, cv::INTER_LINEAR);
+                std::cerr << "big time difference between left and right image" << std::endl;
+                continue;
             }
 
-            SLAM_->TrackStereo(imLeft, imRight, tImLeft, vImuMeas);
+            if (time_img_left > Utility::StampToSec(this->imubuf.back()->header.stamp)) {
+                continue;
+            }
 
-            std::chrono::milliseconds tSleep(1);
-            std::this_thread::sleep_for(tSleep);
+            {
+                std::scoped_lock<std::mutex> lock(this->mutex_img_left);
+                img_left = get_image(this->img_left_buf.front());
+                this->img_left_buf.pop();
+            }
+            {
+                std::scoped_lock<std::mutex> lock(this->mutex_img_right);
+                img_right = get_image(this->img_right_buf.front());
+                this->img_right_buf.pop();
+            }
+
+            auto imu_measurements = std::vector<ORB_SLAM3::IMU::Point>();
+            {
+                std::scoped_lock<std::mutex> lock(this->mutex_imu);
+                if (!this->imubuf.empty())
+                {
+                    // Load imu measurements from buffer
+                    imu_measurements.clear();
+                    while (!this->imubuf.empty() && Utility::StampToSec(this->imubuf.front()->header.stamp) <= time_img_left)
+                    {
+                        const double t = Utility::StampToSec(this->imubuf.front()->header.stamp);
+                        cv::Point3f acc(this->imubuf.front()->linear_acceleration.x, this->imubuf.front()->linear_acceleration.y, this->imubuf.front()->linear_acceleration.z);
+                        cv::Point3f gyr(this->imubuf.front()->angular_velocity.x, this->imubuf.front()->angular_velocity.y, this->imubuf.front()->angular_velocity.z);
+                        imu_measurements.push_back(ORB_SLAM3::IMU::Point(acc, gyr, t));
+                        this->imubuf.pop();
+                    }
+                }
+            }
+            
+            if (this->apply_clahe)
+            {
+                this->clahe->apply(img_left, img_left);
+                this->clahe->apply(img_right, img_right);
+            }
+
+            if (this->do_rectify)
+            {
+                cv::remap(img_left, img_left, M1l_, M2l_, cv::INTER_LINEAR);
+                cv::remap(img_right, img_right, M1r_, M2r_, cv::INTER_LINEAR);
+            }
+
+            this->orbslam3_system->TrackStereo(img_left, img_right, time_img_left, imu_measurements);
+
+            std::this_thread::sleep_for(1ms);
         }
     }
 }
