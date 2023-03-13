@@ -4,26 +4,30 @@
 
 #include <chrono>
 #include <cstdio>
+#include <mutex>
+#include <string>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
+namespace orbslam3 = ORB_SLAM3;
 
 
-StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const string& settings_filepath, bool do_rectify, bool do_equalize) :
+StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::string& settings_filepath, bool do_rectify_, bool do_equalize_) :
     Node("orbslam3"),
-    this->orbslam3_system(SLAM),
-    this->do_rectify(do_rectify),
-    this->do_equalize(do_equalize),
-    this->apply_clahe(do_equalize)
+    orbslam3_system(SLAM),
+    do_rectify(do_rectify_),
+    do_equalize(do_equalize_),
+    apply_clahe(do_equalize_)
 {
     if (this->do_rectify)
     {
         // Load settings related to stereo calibration
-        auto settings cv::FileStorage(settings_filepath, cv::FileStorage::READ);
+        auto settings = cv::FileStorage(settings_filepath, cv::FileStorage::READ);
         if (!settings.isOpened())
         {
-            cerr << "ERROR: Wrong path to settings" << endl;
+
+            std::cerr << "ERROR: Wrong path to settings" << std::endl;
             std::exit(1);
         }
 
@@ -57,31 +61,90 @@ StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const string& se
         cv::initUndistortRectifyMap(right_K, right_D, right_R, right_P.rowRange(0, 3).colRange(0, 3), cv::Size(cols_r, rows_r), CV_32F, M1r_, M2r_);
     }
 
-    this->sub_imu = this->create_subscription<ImuMsg>("imu", 1000, std::bind(&StereoInertialNode::grab_imu, this, _1));
-    this->sub_img_left = this->create_subscription<ImageMsg>("camera/left", 100, std::bind(&StereoInertialNode::grab_image_left, this, _1));
-    this->sub_img_right = this->create_subscription<ImageMsg>("camera/right", 100, std::bind(&StereoInertialNode::grab_image_right, this, _1));
+    auto keeplast = [](std::size_t) -> rclcpp::QoS { return rclcpp::QoS(rclcpp::KeepLast(100)); };
+
+    this->sub_imu = this->create_subscription<ImuMsg>("imu", keeplast(1000), std::bind(&StereoInertialNode::grab_imu, this, _1));
+    this->sub_img_left = this->create_subscription<ImageMsg>("camera/left", keeplast(100), std::bind(&StereoInertialNode::grab_image_left, this, _1));
+    this->sub_img_right = this->create_subscription<ImageMsg>("camera/right", keeplast(100), std::bind(&StereoInertialNode::grab_image_right, this, _1));
 
     this->sync_thread = new std::thread(&StereoInertialNode::sync_with_imu, this);
 
+    // const auto topic_ns_prefix = std::string(this->get_namespace()) + "/";
+    const auto topic_ns_prefix = std::string("/orbslam3/");
+
+
     // Publishers 
-    auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
-    this->pub_imu = this->create_publisher<ImuMsg>("imu_corrected", qos);
-    this->pub_imu_timer = this->create_wall_timer(
-        100ms,
-        std::bind(&StereoInertialNode::pub_imu_callback, this)
-    );
-}
+    // auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+    // this->pub_imu = this->create_publisher<ImuMsg>("imu_corrected", qos);
+    // this->pub_imu_timer = this->create_wall_timer(
+    //     100ms,
+    //     std::bind(&StereoInertialNode::pub_imu_callback, this)
+    // );
 
-auto StereoInertialNode::pub_imu_callback() -> void
-{
-    std::scoped_lock<std::mutex> lock(this->mutex_imu);
-
-    while (!this->imubuf.empty())
     {
-        this->pub_imu->publish(this->imubuf.front());
-        this->imubuf.pop();
+        std::string topic_name = topic_ns_prefix + "camera/pose";
+        auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+        this->pub_camera_pose = this->create_publisher<PoseStampedMsg>(topic_name, qos);
+        auto camera_pose_publish_frequency = 100ms;
+        this->pub_camera_pose_timer = this->create_wall_timer(
+            camera_pose_publish_frequency,
+            std::bind(&StereoInertialNode::pub_camera_pose_callback, this)
+        );
     }
 }
+
+auto StereoInertialNode::pub_camera_pose_callback() -> void
+{
+    using namespace geometry_msgs::msg;
+    // RCLCPP_INFO(this->get_logger(), "attempting to publish camera pose");
+    orbslam3::Tracking* tracker = this->orbslam3_system->get_tracker();
+    orbslam3::Frame& frame = tracker->mCurrentFrame;
+    Eigen::Vector3f camera_center = frame.GetCameraCenter();
+    Sophus::SE3<float> camera_pose = frame.GetPose();
+
+    // auto msg = PoseMsg();
+    auto msg = PoseStampedMsg();
+    std_msgs::msg::Header& header = msg.header;
+    header.frame_id = "map";
+    header.stamp = this->get_clock()->now();
+    
+    Pose &pose = msg.pose;
+    Point &position = pose.position;
+    Quaternion &orientation = pose.orientation;
+
+    position.x = camera_center[0];
+    position.y = camera_center[1];
+    position.z = camera_center[2];
+
+    orientation.x = camera_pose.unit_quaternion().x();
+    orientation.y = camera_pose.unit_quaternion().y();
+    orientation.z = camera_pose.unit_quaternion().z();
+    orientation.w = camera_pose.unit_quaternion().w();
+
+    // RCLCPP_INFO(this->get_logger(), "[%s] Camera pose: (x=%f, y=%f, z=%f) (x=%f, y=%f, z=%f, w=%f)", 
+    //     this->get_name(),
+    //     position.x,
+    //     position.y,
+    //     position.z,
+    //     orientation.x,
+    //     orientation.y,
+    //     orientation.z,
+    //     orientation.w
+    // );
+
+    this->pub_camera_pose->publish(msg);
+}
+
+// auto StereoInertialNode::pub_imu_callback() -> void
+// {
+//     auto lock = std::scoped_lock{this->mutex_imu};
+
+//     while (!this->imubuf.empty())
+//     {
+//         this->pub_imu->publish(this->imubuf.front());
+//         this->imubuf.pop();
+//     }
+// }
 
 
 StereoInertialNode::~StereoInertialNode()
@@ -100,13 +163,13 @@ StereoInertialNode::~StereoInertialNode()
 
 void StereoInertialNode::grab_imu(const ImuMsg::SharedPtr msg)
 {
-    std::scoped_lock<std::mutex> lock(this->mutex_imu);
+    std::scoped_lock lock(this->mutex_imu);
     this->imubuf.push(msg);
 }
 
 void StereoInertialNode::grab_image_left(const ImageMsg::SharedPtr msgLeft)
 {
-    std::scoped_lock<std::mutex> lock(this->mutex_img_left);
+    std::scoped_lock lock(this->mutex_img_left);
 
     if (!this->img_left_buf.empty()) {
         this->img_left_buf.pop();
@@ -117,7 +180,7 @@ void StereoInertialNode::grab_image_left(const ImageMsg::SharedPtr msgLeft)
 
 void StereoInertialNode::grab_image_right(const ImageMsg::SharedPtr msgRight)
 {
-    std::scoped_lock<std::mutex> lock(this->mutex_img_right);
+    std::scoped_lock lock(this->mutex_img_right);
 
     if (!this->img_right_buf.empty()) {
         this->img_right_buf.pop();
@@ -167,7 +230,7 @@ auto StereoInertialNode::sync_with_imu() -> void
             time_img_right = Utility::StampToSec(this->img_right_buf.front()->header.stamp);
 
             {
-                std::scoped_lock<std::mutex> lock(this->mutex_img_right);
+                std::scoped_lock lock(this->mutex_img_right);
                 while ((time_img_left - time_img_right) > max_time_diff && this->img_right_buf.size() > 1)
                 {
                     this->img_right_buf.pop();
@@ -176,7 +239,7 @@ auto StereoInertialNode::sync_with_imu() -> void
             }
 
             {
-                std::scoped_lock<std::mutex> lock(this->mutex_img_left);
+                std::scoped_lock lock(this->mutex_img_left);
                 while ((time_img_right - time_img_left) > max_time_diff && this->img_left_buf.size() > 1)
                 {
                     this->img_left_buf.pop();
@@ -196,19 +259,19 @@ auto StereoInertialNode::sync_with_imu() -> void
             }
 
             {
-                std::scoped_lock<std::mutex> lock(this->mutex_img_left);
+                std::scoped_lock lock(this->mutex_img_left);
                 img_left = get_image(this->img_left_buf.front());
                 this->img_left_buf.pop();
             }
             {
-                std::scoped_lock<std::mutex> lock(this->mutex_img_right);
+                std::scoped_lock lock(this->mutex_img_right);
                 img_right = get_image(this->img_right_buf.front());
                 this->img_right_buf.pop();
             }
 
             auto imu_measurements = std::vector<ORB_SLAM3::IMU::Point>();
             {
-                std::scoped_lock<std::mutex> lock(this->mutex_imu);
+                std::scoped_lock lock(this->mutex_imu);
                 if (!this->imubuf.empty())
                 {
                     // Load imu measurements from buffer

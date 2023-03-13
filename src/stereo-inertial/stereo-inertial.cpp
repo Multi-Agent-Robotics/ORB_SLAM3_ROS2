@@ -29,16 +29,21 @@ int main(int argc, char **argv) {
     
     const string path_to_vocabulary = string(argv[1]);
     const string path_to_settings = string(argv[2]);
-    const string do_rectify = string(argv[3]);
-    const string do_equalize = 
-        argc == 5
-        ? string(argv[4])
-        : "false";
+    
+    auto str2bool = [](const string& s) -> bool {
+        return s == "true" ? true : false;
+    };
 
+    const string arg3 = string(argv[3]);
+
+    const bool do_rectify = str2bool(arg3);
+    const string arg4 = argc == 5 ? string(argv[4]) : "false";
+    const bool do_equalize = str2bool(arg4);
+    
     std::printf("path_to_vocabulary = %s\n", path_to_vocabulary.c_str());
     std::printf("path_to_settings = %s\n", path_to_settings.c_str());
-    std::printf("do_rectify = %s\n", do_rectify.c_str());
-    std::printf("do_equalize = %s\n", do_equalize.c_str());
+    std::printf("do_rectify = %d\n", do_rectify);
+    std::printf("do_equalize = %d\n", do_equalize);
 
     bool failed = false;
 
@@ -48,7 +53,7 @@ int main(int argc, char **argv) {
         bool exists = f.good();
         f.close();
         return exists;
-    }
+    };
 
     if (!file_exists(path_to_vocabulary)) {
         std::printf("Vocabulary file does not exist at: %s\n", path_to_vocabulary.c_str());
@@ -61,17 +66,17 @@ int main(int argc, char **argv) {
     }
 
     // Check rectify and equalize are valid    
-    if(do_rectify != "true" && do_rectify != "false")
-    {
-        std::printf("do_rectify must be true or false, but is %s\n", do_rectify.c_str());
-        failed = true;
-    }
+    // if(do_rectify != "true" && do_rectify != "false")
+    // {
+    //     std::printf("do_rectify must be true or false, but is %s\n", do_rectify.c_str());
+    //     failed = true;
+    // }
 
-    if(do_equalize != "true" && do_equalize != "false")
-    {
-        std::printf("do_equalize must be true or false, but is %s\n", do_equalize.c_str());
-        failed = true;
-    }
+    // if(do_equalize != "true" && do_equalize != "false")
+    // {
+    //     std::printf("do_equalize must be true or false, but is %s\n", do_equalize.c_str());
+    //     failed = true;
+    // }
 
     if (failed) {
         rclcpp::shutdown();
@@ -91,7 +96,7 @@ int main(int argc, char **argv) {
 
     // auto node = std::make_shared<StereoInertialNode>(&orbslam3_system, path_to_settings, argv[3], argv[4]);
     auto node = std::make_shared<StereoInertialNode>(&orbslam3_system, path_to_settings, do_rectify, do_equalize);
-    hr('=', 80)
+    hr('=', 80);
 
     rclcpp::spin(node);
     rclcpp::shutdown();

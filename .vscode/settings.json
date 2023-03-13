@@ -64,5 +64,12 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
-    }
+    },
+    "python.autoComplete.extraPaths": [
+        "/home/orin/ros2_ws/install/zed_topic_benchmark_interfaces/lib/python3.8/site-packages",
+        "/home/orin/ros2_ws/install/zed_interfaces/lib/python3.8/site-packages",
+        "/home/orin/ros2_ws/build/rnd-lugbot",
+        "/home/orin/ros2_ws/install/rnd-lugbot/lib/python3.8/site-packages",
+        "/opt/ros/foxy/lib/python3.8/site-packages"
+    ]
 }
