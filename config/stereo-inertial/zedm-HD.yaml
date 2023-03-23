@@ -55,10 +55,10 @@ Camera2.p2: 0.004113971771778728
 
 
 # Close/Far threshold. Baseline times.
-ThDepth: 50.0
+ThDepth: 35.0
 
 # STEREO --------------------------------------------------------------------------------------------
-Stereo.ThDepth: 50.0
+# Stereo.ThDepth: 50.0
 Stereo.T_c1_c2: !!opencv-matrix
   rows: 4
   cols: 4
@@ -78,8 +78,8 @@ Stereo.T_c1_c2: !!opencv-matrix
 #--------------------------------------------------------------------------------------------
 # TODO: calibrate with `kalibr` tool
 
-LEFT.height: 896
-LEFT.width: 512
+LEFT.height: 512
+LEFT.width: 896
 # found using: ros2 topic echo /zedm/zed_node/left/camera_info
 LEFT.D: !!opencv-matrix
    rows: 1
@@ -109,8 +109,8 @@ LEFT.P:  !!opencv-matrix
    dt: d
    data: [470.006, 0.0, 464.271, 0.0, 0.0, 477.467193, 258.4399, 0.0, 0.0, 0.0, 1.0, 0.0]
 
-RIGHT.height: 896
-RIGHT.width: 512
+RIGHT.height: 512
+RIGHT.width: 896
 RIGHT.D: !!opencv-matrix
    rows: 1
    cols: 5
@@ -170,13 +170,6 @@ IMU.T_b_c1: !!opencv-matrix
     0.49627414, 0.83456722, -0.23918515, 0.00302998,
     0.0, 0.0, 0.0, 1.0]
 
-# try with very small values e.g. 10e-8
-# IMU.NoiseAcc: 10e-8
-# IMU.NoiseGyro: 10e-8
-# IMU.AccWalk: 10e-8
-# IMU.GyroWalk: 10e-8
-
-
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
@@ -184,12 +177,14 @@ IMU.T_b_c1: !!opencv-matrix
 
 ORBextractor.nFeatures: 1200 # number of features per image
 ORBextractor.scaleFactor: 1.2 # scale factor between levels in the scale pyramid
-ORBextractor.nLevels: 8 # number of levels in the scale pyramid
-  # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
-  # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
-  # You can lower these values if your images have low contrast
-ORBextractor.iniThFAST: 20
-ORBextractor.minThFAST: 7
+ORBextractor.nLevels: 12 # number of levels in the scale pyramid
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast
+# ORBextractor.iniThFAST: 20
+ORBextractor.iniThFAST: 10
+# ORBextractor.minThFAST: 7
+ORBextractor.minThFAST: 3
 
 
 # Atlas Parameters
@@ -205,15 +200,15 @@ ORBextractor.minThFAST: 7
 
 # Viewer:
   # size in which the KeyFrames are drawn in the map viewer.
-Viewer.KeyFrameSize: 0.15
+Viewer.KeyFrameSize: 0.05
   # line width of the KeyFrame drawing.
 Viewer.KeyFrameLineWidth: 1
   # line width of the covisibility graph.
 Viewer.GraphLineWidth: 0.9
   # size of the MapPoint drawing.
-Viewer.PointSize: 2
+Viewer.PointSize: 5
   # size in which the current camera is drawn in the map viewer
-Viewer.CameraSize: 0.10
+Viewer.CameraSize: 0.08
   # line width of the current camera drawing.
 Viewer.CameraLineWidth: 3
   # starting view point of the map viewer.
