@@ -23,6 +23,8 @@ find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(message_filters REQUIRED)
 
+find_package(orbslam3_msgs REQUIRED)
+
 # These are required for ORB_SLAM3
 
 find_package(Eigen3 3.1.0 REQUIRED)

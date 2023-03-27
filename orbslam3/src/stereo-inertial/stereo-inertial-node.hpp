@@ -7,7 +7,7 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-#include "orbslam3_msgs/msg/keypoints_stamped.hpp"
+#include "orbslam3_msgs/msg/keypoints.hpp"
 
 #include <cv_bridge/cv_bridge.h>
 
