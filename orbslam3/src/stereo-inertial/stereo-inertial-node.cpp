@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdio>
 #include <mutex>
+#include <cstdio>
 #include <string>
 
 using namespace std::chrono_literals;
@@ -24,10 +25,8 @@ StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::strin
     {
         // Load settings related to stereo calibration
         auto settings = cv::FileStorage(settings_filepath, cv::FileStorage::READ);
-        if (!settings.isOpened())
-        {
-
-            std::cerr << "ERROR: Wrong path to settings" << std::endl;
+        if (!settings.isOpened()) {
+            std::fprintf(stderr, "ERROR: Wrong path to settings, %s\n", settings_filepath.c_str());
             std::exit(1);
         }
 
@@ -53,7 +52,7 @@ StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::strin
         if (left_K.empty() || right_K.empty() || left_P.empty() || right_P.empty() || left_R.empty() || right_R.empty() || left_D.empty() || right_D.empty() ||
             rows_l == 0 || rows_r == 0 || cols_l == 0 || cols_r == 0)
         {
-            cerr << "ERROR: Calibration parameters to rectify stereo are missing!" << endl;
+            std::fprintf(stderr, "ERROR: Calibration parameters to rectify stereo are missing!\n");
             std::exit(1);
         }
 
@@ -69,18 +68,20 @@ StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::strin
 
     this->sync_thread = new std::thread(&StereoInertialNode::sync_with_imu, this);
 
-    // const auto topic_ns_prefix = std::string(this->get_namespace()) + "/";
     const auto topic_ns_prefix = std::string("/orbslam3/");
 
 
-    // Publishers 
-    // auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
-    // this->pub_imu = this->create_publisher<ImuMsg>("imu_corrected", qos);
-    // this->pub_imu_timer = this->create_wall_timer(
-    //     100ms,
-    //     std::bind(&StereoInertialNode::pub_imu_callback, this)
-    // );
-
+    // Publishers --------------------------------------------------------------------------------
+    {
+        std::string topic_name = topic_ns_prefix + "orb_features_from_current_frame";
+        auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+        this->pub_orb_features_from_current_frame = this->create_publisher<ORBFeaturesMsg>(topic_name, qos);
+        auto orb_features_from_current_frame_publish_frequency = 100ms;
+        this->pub_orb_features_from_current_frame_timer = this->create_wall_timer(
+            orb_features_from_current_frame_publish_frequency,
+            std::bind(&StereoInertialNode::pub_orb_features_from_current_frame_callback, this)
+        );
+    }
     {
         std::string topic_name = topic_ns_prefix + "camera/pose";
         auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
@@ -96,7 +97,6 @@ StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::strin
 auto StereoInertialNode::pub_camera_pose_callback() -> void
 {
     using namespace geometry_msgs::msg;
-    // RCLCPP_INFO(this->get_logger(), "attempting to publish camera pose");
     orbslam3::Tracking* tracker = this->orbslam3_system->get_tracker();
     orbslam3::Frame& frame = tracker->mCurrentFrame;
     Eigen::Vector3f camera_center = frame.GetCameraCenter();

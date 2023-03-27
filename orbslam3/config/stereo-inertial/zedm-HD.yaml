@@ -171,6 +171,19 @@ IMU.T_b_c1: !!opencv-matrix
     0.0, 0.0, 0.0, 1.0]
 
 
+
+# For some reason orbslam3 now wants this, even though it is the same
+# as IMU.T_b_c1 above
+Tbc: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: f
+  data: [
+    -0.11725866, -0.20854666, -0.97095762, -0.0001198,
+    -0.86021066, 0.50990769, -0.00563608, 0.00066236,
+    0.49627414, 0.83456722, -0.23918515, 0.00302998,
+    0.0, 0.0, 0.0, 1.0]
+
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
@@ -196,25 +209,22 @@ ORBextractor.minThFAST: 3
 # Viewer Parameters
 # These are some parameters related to the ORB-SLAM3 user interface:
 #--------------------------------------------------------------------------------------------
-# TODO: test this
-
-# Viewer:
-  # size in which the KeyFrames are drawn in the map viewer.
+# size in which the KeyFrames are drawn in the map viewer.
 Viewer.KeyFrameSize: 0.05
-  # line width of the KeyFrame drawing.
+# line width of the KeyFrame drawing.
 Viewer.KeyFrameLineWidth: 1
-  # line width of the covisibility graph.
+# line width of the covisibility graph.
 Viewer.GraphLineWidth: 0.9
-  # size of the MapPoint drawing.
+# size of the MapPoint drawing.
 Viewer.PointSize: 5
-  # size in which the current camera is drawn in the map viewer
+# size in which the current camera is drawn in the map viewer
 Viewer.CameraSize: 0.08
-  # line width of the current camera drawing.
+# line width of the current camera drawing.
 Viewer.CameraLineWidth: 3
-  # starting view point of the map viewer.
+# starting view point of the map viewer.
 Viewer.ViewpointX: 0
 Viewer.ViewpointY: -0.7
 Viewer.ViewpointZ: -1.8
 Viewer.ViewpointF: 500
-  # OPTIONAL
+# OPTIONAL
 Viewer.imageViewScale: 1.0
