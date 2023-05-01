@@ -7,10 +7,9 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-#include "orbslam3_msgs/msg/keypoints.hpp"
+// #include "orbslam3_msgs/msg/keypoints.hpp"
 
 #include <cv_bridge/cv_bridge.h>
-
 
 // ORB_SLAM3
 #include "System.h"
@@ -18,9 +17,8 @@
 #include "Map.h"
 #include "Tracking.h"
 
-#include "Eigen/Core" // Eigen::Vector3f
+#include "Eigen/Core"     // Eigen::Vector3f
 #include "sophus/se3.hpp" // Sophus::SE3<float>
-
 
 #include "utility.hpp"
 
@@ -32,7 +30,7 @@ using ImuMsg = sensor_msgs::msg::Imu;
 using ImageMsg = sensor_msgs::msg::Image;
 using PoseMsg = geometry_msgs::msg::Pose;
 using PoseStampedMsg = geometry_msgs::msg::PoseStamped;
-using KeypointsStampedMsg = orbslam3_msgs::msg::KeypointsStamped;
+// using KeypointsStampedMsg = orbslam3_msgs::msg::KeypointsStamped;
 
 template <typename T>
 using Subscriber = ros2::Subscription<T>;
@@ -40,11 +38,11 @@ using Subscriber = ros2::Subscription<T>;
 template <typename T>
 using Publisher = ros2::Publisher<T>;
 
-
-class StereoInertialNode final : public ros2::Node {
+class StereoInertialNode final : public ros2::Node
+{
 
 public:
-    StereoInertialNode(ORB_SLAM3::System* pSLAM, const string &settings_filepath, bool do_rectify, bool do_equalize);
+    StereoInertialNode(ORB_SLAM3::System *pSLAM, const string &settings_filepath, bool do_rectify, bool do_equalize);
     ~StereoInertialNode();
 
 private:
@@ -52,6 +50,7 @@ private:
     auto grab_image_left(const ImageMsg::SharedPtr msg) -> void;
     auto grab_image_right(const ImageMsg::SharedPtr msg) -> void;
     auto get_image(const ImageMsg::SharedPtr msg) -> cv::Mat;
+    auto pub_orb_features_callback() -> void;
     auto sync_with_imu() -> void;
 
     // auto pub_imu_callback() -> void;
@@ -68,12 +67,14 @@ private:
     // ros2::TimerBase::SharedPtr pub_tracked_map_points_timer;
 
     auto pub_orb_features_from_current_frame_callback() -> void;
-    Publisher<KeypointsStampedMsg>::SharedPtr pub_orb_features_from_current_frame;
+    // Publisher<KeypointsStampedMsg>::SharedPtr pub_orb_features_from_current_frame;
     ros2::TimerBase::SharedPtr pub_orb_features_from_current_frame_timer;
 
     auto pub_camera_pose_callback() -> void;
     Publisher<PoseStampedMsg>::SharedPtr pub_camera_pose;
     ros2::TimerBase::SharedPtr pub_camera_pose_timer;
+
+    ros2::TimerBase::SharedPtr pub_orb_features_timer;
 
     // ORB_SLAM3::System *SLAM_;
     ORB_SLAM3::System *orbslam3_system;

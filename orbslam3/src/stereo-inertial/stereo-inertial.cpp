@@ -21,7 +21,6 @@ auto hr(const char c, unsigned int n = 80) -> void {
 
 
 auto main(int argc, char **argv) -> int {
-
     if(argc < 4) {
         std::cerr << "Usage: ros2 run orbslam stereo path_to_vocabulary path_to_settings do_rectify [do_equalize]" << std::endl;
         ros2::shutdown();

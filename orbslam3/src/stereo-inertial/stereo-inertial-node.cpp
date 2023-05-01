@@ -1,7 +1,8 @@
 #include "stereo-inertial-node.hpp"
+#include "cv-utils.hpp"
+#include <opencv2/core.hpp>
 
-#include <opencv2/core/core.hpp>
-
+#include <cstdint>
 #include <chrono>
 #include <cstdio>
 #include <mutex>
@@ -9,29 +10,28 @@
 #include <string>
 
 using namespace std::chrono_literals;
-using std::placeholders::_1;
+using namespace std::placeholders;
 
 namespace orbslam3 = ORB_SLAM3;
 
-
-StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::string& settings_filepath, bool do_rectify_, bool do_equalize_) :
-    Node("orbslam3"),
-    orbslam3_system(SLAM),
-    do_rectify(do_rectify_),
-    do_equalize(do_equalize_),
-    apply_clahe(do_equalize_)
+StereoInertialNode::StereoInertialNode(orbslam3::System *SLAM, const std::string &settings_filepath, bool do_rectify_, bool do_equalize_) : Node("orbslam3"),
+                                                                                                                                            orbslam3_system(SLAM),
+                                                                                                                                            do_rectify(do_rectify_),
+                                                                                                                                            do_equalize(do_equalize_),
+                                                                                                                                            apply_clahe(do_equalize_)
 {
     if (this->do_rectify)
     {
         // Load settings related to stereo calibration
         auto settings = cv::FileStorage(settings_filepath, cv::FileStorage::READ);
-        if (!settings.isOpened()) {
+        if (!settings.isOpened())
+        {
             std::fprintf(stderr, "ERROR: Wrong path to settings, %s\n", settings_filepath.c_str());
             std::exit(1);
         }
 
         cv::Mat left_K, right_K, left_P, right_P, left_R, right_R, left_D, right_D;
-        
+
         settings["LEFT.K"] >> left_K;
         settings["RIGHT.K"] >> right_K;
 
@@ -60,7 +60,8 @@ StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::strin
         cv::initUndistortRectifyMap(right_K, right_D, right_R, right_P.rowRange(0, 3).colRange(0, 3), cv::Size(cols_r, rows_r), CV_32F, M1r_, M2r_);
     }
 
-    auto keeplast = [](std::size_t) -> rclcpp::QoS { return rclcpp::QoS(rclcpp::KeepLast(100)); };
+    auto keeplast = [](std::size_t) -> rclcpp::QoS
+    { return rclcpp::QoS(rclcpp::KeepLast(100)); };
 
     this->sub_imu = this->create_subscription<ImuMsg>("imu", keeplast(1000), std::bind(&StereoInertialNode::grab_imu, this, _1));
     this->sub_img_left = this->create_subscription<ImageMsg>("camera/left", keeplast(100), std::bind(&StereoInertialNode::grab_image_left, this, _1));
@@ -70,44 +71,73 @@ StereoInertialNode::StereoInertialNode(ORB_SLAM3::System *SLAM, const std::strin
 
     const auto topic_ns_prefix = std::string("/orbslam3/");
 
-
     // Publishers --------------------------------------------------------------------------------
-    {
-        std::string topic_name = topic_ns_prefix + "orb_features_from_current_frame";
-        auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
-        this->pub_orb_features_from_current_frame = this->create_publisher<ORBFeaturesMsg>(topic_name, qos);
-        auto orb_features_from_current_frame_publish_frequency = 100ms;
-        this->pub_orb_features_from_current_frame_timer = this->create_wall_timer(
-            orb_features_from_current_frame_publish_frequency,
-            std::bind(&StereoInertialNode::pub_orb_features_from_current_frame_callback, this)
-        );
-    }
+    // {
+    //     std::string topic_name = topic_ns_prefix + "orb_features_from_current_frame";
+    //     auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+    //     this->pub_orb_features_from_current_frame = this->create_publisher<ORBFeaturesMsg>(topic_name, qos);
+    //     this->pub_orb_features_from_current_frame_timer = this->create_wall_timer(
+    //         100ms,
+    //         std::bind(&StereoInertialNode::pub_orb_features_from_current_frame_callback, this));
+    // }
     {
         std::string topic_name = topic_ns_prefix + "camera/pose";
         auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
         this->pub_camera_pose = this->create_publisher<PoseStampedMsg>(topic_name, qos);
-        auto camera_pose_publish_frequency = 100ms;
         this->pub_camera_pose_timer = this->create_wall_timer(
-            camera_pose_publish_frequency,
-            std::bind(&StereoInertialNode::pub_camera_pose_callback, this)
-        );
+            100ms,
+            std::bind(&StereoInertialNode::pub_camera_pose_callback, this));
+    }
+    // this->pub_orb_features_timer = this->create_wall_timer(
+    //     100ms,
+    //     std::bind(&StereoInertialNode::pub_orb_features_callback, this));
+}
+
+auto StereoInertialNode::pub_orb_features_callback() -> void
+{
+    static std::uint64_t times_called = 0;
+    times_called += 1;
+    orbslam3::Tracking *tracker = this->orbslam3_system->get_tracker();
+    orbslam3::Frame &current_frame = tracker->mCurrentFrame;
+    // orbslam3::Frame& last_frame = tracker->mLastFrame;
+    std::vector<cv::KeyPoint> &keypoints_left = current_frame.mvKeys;
+    std::vector<cv::KeyPoint> &keypoints_right = current_frame.mvKeysRight;
+
+    cv::Mat &descriptors_left = current_frame.mDescriptors;
+    cv::Mat &descriptors_right = current_frame.mDescriptorsRight;
+
+    if (times_called % 100 == 0)
+    {
+        std::printf("descriptors_left: \n");
+        pretty_print_mat(descriptors_left);
+        std::printf("descriptors_right: \n");
+        pretty_print_mat(descriptors_right);
+        std::printf("keypoints_left: \n");
+        for (auto &keypoint : keypoints_left)
+        {
+            pretty_print_keypoint(keypoint);
+        }
+        std::printf("keypoints_right: \n");
+        for (auto &keypoint : keypoints_right)
+        {
+            pretty_print_keypoint(keypoint);
+        }
     }
 }
 
 auto StereoInertialNode::pub_camera_pose_callback() -> void
 {
     using namespace geometry_msgs::msg;
-    orbslam3::Tracking* tracker = this->orbslam3_system->get_tracker();
-    orbslam3::Frame& frame = tracker->mCurrentFrame;
+    orbslam3::Tracking *tracker = this->orbslam3_system->get_tracker();
+    orbslam3::Frame &frame = tracker->mCurrentFrame;
     Eigen::Vector3f camera_center = frame.GetCameraCenter();
     Sophus::SE3<float> camera_pose = frame.GetPose();
 
-    // auto msg = PoseMsg();
     auto msg = PoseStampedMsg();
-    std_msgs::msg::Header& header = msg.header;
+    std_msgs::msg::Header &header = msg.header;
     header.frame_id = "map";
     header.stamp = this->get_clock()->now();
-    
+
     Pose &pose = msg.pose;
     Point &position = pose.position;
     Quaternion &orientation = pose.orientation;
@@ -120,17 +150,6 @@ auto StereoInertialNode::pub_camera_pose_callback() -> void
     orientation.y = camera_pose.unit_quaternion().y();
     orientation.z = camera_pose.unit_quaternion().z();
     orientation.w = camera_pose.unit_quaternion().w();
-
-    // RCLCPP_INFO(this->get_logger(), "[%s] Camera pose: (x=%f, y=%f, z=%f) (x=%f, y=%f, z=%f, w=%f)", 
-    //     this->get_name(),
-    //     position.x,
-    //     position.y,
-    //     position.z,
-    //     orientation.x,
-    //     orientation.y,
-    //     orientation.z,
-    //     orientation.w
-    // );
 
     this->pub_camera_pose->publish(msg);
 }
@@ -145,7 +164,6 @@ auto StereoInertialNode::pub_camera_pose_callback() -> void
 //         this->imubuf.pop();
 //     }
 // }
-
 
 StereoInertialNode::~StereoInertialNode()
 {
@@ -171,7 +189,8 @@ void StereoInertialNode::grab_image_left(const ImageMsg::SharedPtr msgLeft)
 {
     std::scoped_lock lock(this->mutex_img_left);
 
-    if (!this->img_left_buf.empty()) {
+    if (!this->img_left_buf.empty())
+    {
         this->img_left_buf.pop();
     }
 
@@ -182,7 +201,8 @@ void StereoInertialNode::grab_image_right(const ImageMsg::SharedPtr msgRight)
 {
     std::scoped_lock lock(this->mutex_img_right);
 
-    if (!this->img_right_buf.empty()) {
+    if (!this->img_right_buf.empty())
+    {
         this->img_right_buf.pop();
     }
 
@@ -254,7 +274,8 @@ auto StereoInertialNode::sync_with_imu() -> void
                 continue;
             }
 
-            if (time_img_left > Utility::StampToSec(this->imubuf.back()->header.stamp)) {
+            if (time_img_left > Utility::StampToSec(this->imubuf.back()->header.stamp))
+            {
                 continue;
             }
 
@@ -286,7 +307,7 @@ auto StereoInertialNode::sync_with_imu() -> void
                     }
                 }
             }
-            
+
             if (this->apply_clahe)
             {
                 this->clahe->apply(img_left, img_left);
