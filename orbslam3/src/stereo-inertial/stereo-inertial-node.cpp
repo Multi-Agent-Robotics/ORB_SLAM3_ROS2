@@ -247,15 +247,15 @@ auto StereoInertialNode::sync_with_imu() -> void
 
         if (!this->img_left_buf.empty() && !this->img_right_buf.empty() && !this->imubuf.empty())
         {
-            time_img_left = Utility::StampToSec(this->img_left_buf.front()->header.stamp);
-            time_img_right = Utility::StampToSec(this->img_right_buf.front()->header.stamp);
+            time_img_left = utils::stamp2sec(this->img_left_buf.front()->header.stamp);
+            time_img_right = utils::stamp2sec(this->img_right_buf.front()->header.stamp);
 
             {
                 std::scoped_lock lock(this->mutex_img_right);
                 while ((time_img_left - time_img_right) > max_time_diff && this->img_right_buf.size() > 1)
                 {
                     this->img_right_buf.pop();
-                    time_img_right = Utility::StampToSec(this->img_right_buf.front()->header.stamp);
+                    time_img_right = utils::stamp2sec(this->img_right_buf.front()->header.stamp);
                 }
             }
 
@@ -264,7 +264,7 @@ auto StereoInertialNode::sync_with_imu() -> void
                 while ((time_img_right - time_img_left) > max_time_diff && this->img_left_buf.size() > 1)
                 {
                     this->img_left_buf.pop();
-                    time_img_left = Utility::StampToSec(this->img_left_buf.front()->header.stamp);
+                    time_img_left = utils::stamp2sec(this->img_left_buf.front()->header.stamp);
                 }
             }
 
@@ -275,7 +275,7 @@ auto StereoInertialNode::sync_with_imu() -> void
                 continue;
             }
 
-            if (time_img_left > Utility::StampToSec(this->imubuf.back()->header.stamp))
+            if (time_img_left > utils::stamp2sec(this->imubuf.back()->header.stamp))
             {
                 continue;
             }
@@ -298,9 +298,9 @@ auto StereoInertialNode::sync_with_imu() -> void
                 {
                     // Load imu measurements from buffer
                     imu_measurements.clear();
-                    while (!this->imubuf.empty() && Utility::StampToSec(this->imubuf.front()->header.stamp) <= time_img_left)
+                    while (!this->imubuf.empty() && utils::stamp2sec(this->imubuf.front()->header.stamp) <= time_img_left)
                     {
-                        const double t = Utility::StampToSec(this->imubuf.front()->header.stamp);
+                        const double t = utils::stamp2sec(this->imubuf.front()->header.stamp);
                         cv::Point3f acc(this->imubuf.front()->linear_acceleration.x, this->imubuf.front()->linear_acceleration.y, this->imubuf.front()->linear_acceleration.z);
                         cv::Point3f gyr(this->imubuf.front()->angular_velocity.x, this->imubuf.front()->angular_velocity.y, this->imubuf.front()->angular_velocity.z);
                         imu_measurements.push_back(ORB_SLAM3::IMU::Point(acc, gyr, t));

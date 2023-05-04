@@ -4,7 +4,7 @@
 #include <cassert>
 #include <opencv2/opencv.hpp>
 
-void pretty_print_mat(const cv::Mat &mat, const int precision = 2)
+auto pretty_print_mat(const cv::Mat &mat, const int precision = 2) -> void
 {
     // Set the desired precision for printing floating-point numbers
     assert(precision >= 0);
@@ -47,7 +47,7 @@ void pretty_print_mat(const cv::Mat &mat, const int precision = 2)
     }
 }
 
-void pretty_print_keypoint(const cv::KeyPoint &keypoint)
+auto pretty_print_keypoint(const cv::KeyPoint &keypoint) -> void
 {
     // Set the desired precision for printing floating-point numbers
     int precision = 2;
