@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <cassert>
-#include "opencv2/opencv.hpp"
+#include <opencv2/opencv.hpp>
 
 void pretty_print_mat(const cv::Mat &mat, const int precision = 2)
 {

@@ -5,6 +5,17 @@
 #
 # To help the search ORB_SLAM3_ROOT_DIR environment variable as the path to ORB_SLAM3 root folder
 #  e.g. `set( ORB_SLAM3_ROOT_DIR=~/ORB_SLAM3) `
+
+# Assert that the environment variable is set, otherwise abort
+if(NOT DEFINED ENV{ORB_SLAM3_ROOT_DIR})
+  message(FATAL_ERROR "Environment variable ORB_SLAM3_ROOT_DIR is not set. Please set it to the root directory of ORB_SLAM3.")
+endif()
+
+# Assert that ORB_SLAM3_ROOT_DIR is a valid directory, otherwise abort
+if (NOT EXISTS "$ENV{ORB_SLAM3_ROOT_DIR}")
+  message(FATAL_ERROR "Directory $ENV{ORB_SLAM3_ROOT_DIR} does not exist. Please set ORB_SLAM3_ROOT_DIR to the root directory of ORB_SLAM3.")
+endif()
+
 set(ORB_SLAM3_ROOT_DIR "$ENV{ORB_SLAM3_ROOT_DIR}")
 
 # message(${ORB_SLAM3_ROOT_DIR})

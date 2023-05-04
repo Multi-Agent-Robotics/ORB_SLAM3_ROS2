@@ -1,5 +1,6 @@
 #include "stereo-inertial-node.hpp"
 #include "cv-utils.hpp"
+#include "utils.hpp"
 #include <opencv2/core.hpp>
 
 #include <cstdint>
@@ -88,9 +89,9 @@ StereoInertialNode::StereoInertialNode(orbslam3::System *SLAM, const std::string
             100ms,
             std::bind(&StereoInertialNode::pub_camera_pose_callback, this));
     }
-    // this->pub_orb_features_timer = this->create_wall_timer(
-    //     100ms,
-    //     std::bind(&StereoInertialNode::pub_orb_features_callback, this));
+    this->pub_orb_features_timer = this->create_wall_timer(
+        100ms,
+        std::bind(&StereoInertialNode::pub_orb_features_callback, this));
 }
 
 auto StereoInertialNode::pub_orb_features_callback() -> void
@@ -110,18 +111,18 @@ auto StereoInertialNode::pub_orb_features_callback() -> void
     {
         std::printf("descriptors_left: \n");
         pretty_print_mat(descriptors_left);
-        std::printf("descriptors_right: \n");
-        pretty_print_mat(descriptors_right);
-        std::printf("keypoints_left: \n");
-        for (auto &keypoint : keypoints_left)
-        {
-            pretty_print_keypoint(keypoint);
-        }
-        std::printf("keypoints_right: \n");
-        for (auto &keypoint : keypoints_right)
-        {
-            pretty_print_keypoint(keypoint);
-        }
+        // std::printf("descriptors_right: \n");
+        // pretty_print_mat(descriptors_right);
+        // std::printf("keypoints_left: \n");
+        // for (auto &keypoint : keypoints_left)
+        // {
+        //     pretty_print_keypoint(keypoint);
+        // }
+        // std::printf("keypoints_right: \n");
+        // for (auto &keypoint : keypoints_right)
+        // {
+        //     pretty_print_keypoint(keypoint);
+        // }
     }
 }
 

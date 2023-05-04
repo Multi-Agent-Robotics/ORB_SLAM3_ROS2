@@ -16,8 +16,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 
-set(OpenCV_DIR "~/.local/lib/cmake/opencv4")
-find_package(OpenCV 4.2.0 REQUIRED)
+# set(OpenCV_DIR "~/.local/lib/cmake/opencv4")
+# find_package(OpenCV 4.2.0 REQUIRED)
 
 # ROS2 packages
 find_package(ament_cmake REQUIRED)
@@ -31,12 +31,12 @@ find_package(message_filters REQUIRED)
 
 # These are required for ORB_SLAM3
 
-find_package(Eigen3 3.1.0 REQUIRED)
+# find_package(Eigen3 3.1.0 REQUIRED)
 
 find_package(Sophus REQUIRED)
 # set(Pangolin_DIR "~/.local/lib/cmake/Pangolin")
 find_package(Pangolin REQUIRED)
-set(ORB_SLAM3_DIR "~/.local/lib/cmake/ORB_SLAM3")
+# set(ORB_SLAM3_DIR "~/.local/lib/cmake/ORB_SLAM3")
 find_package(ORB_SLAM3 REQUIRED)
 
 include_directories(
@@ -74,11 +74,37 @@ add_executable(stereo-inertial
 )
 target_include_directories(stereo-inertial PRIVATE src)
 
+message(STATUS "ORB_SLAM3_LIBRARIES: ${ORB_SLAM3_LIBRARIES}")
+
+
+
+# target_link_libraries(stereo-inertial
+#   "~/multi-agent-robotics/ORB-SLAM3-STEREO-FIXED/lib/libORB_SLAM3.so"
+#   # ${ORB_SLAM3_LIBS}
+#   # ${Pangolin_LIBRARIES}
+#   # ${OpenCV_LIBS}
+#   # ${EIGEN3_LIBS}
+#   # ${Sophus_LIBS}
+# )
+
+target_link_libraries(stereo-inertial ${ORB_SLAM3_LIBRARIES})
+
+
+
+
 ament_target_dependencies(stereo-inertial rclcpp sensor_msgs cv_bridge ORB_SLAM3 Pangolin)
+# ament_target_dependencies(stereo-inertial rclcpp sensor_msgs cv_bridge Pangolin)
+
+# install(TARGETS mono rgbd stereo stereo-inertial
+
+install(
+  FILES ${ORB_SLAM3_LIBRARIES}
+  DESTINATION lib/
+)
 
 install(TARGETS stereo-inertial
-# install(TARGETS mono rgbd stereo stereo-inertial
-  DESTINATION lib/${PROJECT_NAME})
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Install launch files.
 #install(DIRECTORY launch config vocabulary
