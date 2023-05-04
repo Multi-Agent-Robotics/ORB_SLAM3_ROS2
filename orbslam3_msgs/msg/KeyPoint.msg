@@ -1,4 +1,5 @@
 # A msg serializing the OpenCV KeyPoint object
+# in c++ it is cv::KeyPoint
 
 float32 angle # angle between the keypoint direction and x axis
 int32 class_id # object class (if the keypoints need to be clustered by an object they belong to)

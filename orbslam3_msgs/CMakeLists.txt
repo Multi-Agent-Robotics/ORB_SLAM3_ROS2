@@ -20,28 +20,51 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-set(MSG_FILES
-  "msg/Keypoint.msg"
-  "msg/Keypoints.msg"
-)
+# get all files with .msg extension using a file glob
+file(GLOB_RECURSE MSG_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "msg/*.msg")
+list(LENGTH MSG_FILES MSG_FILES_LENGTH)
+file(GLOB_RECURSE SRV_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "srv/*.srv")
+list(LENGTH SRV_FILES SRV_FILES_LENGTH)
 
-set(SRV_FILES)
+# print each file to the console
+message(STATUS "Found ${MSG_FILES_LENGTH} message files:")
+foreach(MSG_FILE ${MSG_FILES})
+  message(STATUS "+ ${MSG_FILE}")
+endforeach()
+
+message(STATUS "Found ${SRC_FILES_LENGTH} service files:")
+foreach(SRV_FILE ${SRV_FILES})
+  message(STATUS "+ ${SRV_FILE}")
+endforeach()
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${MSG_FILES}
-  ${SRV_FILES}
   DEPENDENCIES builtin_interfaces std_msgs
-  ADD_LINTER_TESTS
 )
+
+# set(MSG_FILES
+#   "msg/Keypoint.msg"
+#   "msg/Descriptors.msg"
+#   "msg/OrbFeatures.msg"
+# )
+
+
+# rosidl_generate_interfaces(${PROJECT_NAME}
+#   ${MSG_FILES}
+#   ${SRV_FILES}
+#   DEPENDENCIES builtin_interfaces std_msgs
+#   ADD_LINTER_TESTS
+# )
+ament_export_dependencies(rosidl_default_runtime)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_export_dependencies(rosidl_default_runtime)
 ament_package()
