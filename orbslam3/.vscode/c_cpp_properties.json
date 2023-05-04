@@ -1,0 +1,42 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/orin/ros2_ws/install/zed_topic_benchmark_interfaces/include/**",
+        "/home/orin/ros2_ws/install/zed_rgb_convert/include/**",
+        "/home/orin/ros2_ws/install/zed_components/include/**",
+        "/home/orin/ros2_ws/install/rviz_plugin_zed_od/include/**",
+        "/home/orin/ros2_ws/install/zed_interfaces/include/**",
+        "/home/orin/ros2_ws/install/vesc_driver/include/**",
+        "/home/orin/ros2_ws/install/vesc_ackermann/include/**",
+        "/home/orin/ros2_ws/install/vesc_msgs/include/**",
+        "/home/orin/ros2_ws/install/udp_driver/include/**",
+        "/home/orin/ros2_ws/install/serial_driver/include/**",
+        "/home/orin/ros2_ws/install/io_context/include/**",
+        "/home/orin/ros2_ws/install/ds4_driver_msgs/include/**",
+        "/home/orin/ros2_ws/install/camera_calibration_parsers/include/**",
+        "/home/orin/ros2_ws/install/arc_msgs/include/**",
+        "/opt/ros/foxy/include/**",
+        "/home/orin/ros2_ws/src/arc/arc_base/include/**",
+        "/home/orin/ros2_ws/src/orbslam3/orbslam3/include/**",
+        "/home/orin/ros2_ws/src/transport_drivers/io_context/include/**",
+        "/home/orin/ros2_ws/src/transport_drivers/serial_driver/include/**",
+        "/home/orin/ros2_ws/src/transport_drivers/udp_driver/include/**",
+        "/home/orin/ros2_ws/src/vesc/vesc_ackermann/include/**",
+        "/home/orin/ros2_ws/src/vesc/vesc_driver/include/**",
+        "include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-arm64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

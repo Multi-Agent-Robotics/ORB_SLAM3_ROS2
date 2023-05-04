@@ -22,7 +22,7 @@
 #include "Eigen/Core"     // Eigen::Vector3f
 #include "sophus/se3.hpp" // Sophus::SE3<float>
 
-#include "utility.hpp"
+// #include "utility.hpp"
 
 namespace ros2 = rclcpp;
 namespace orbslam3 = ORB_SLAM3;
