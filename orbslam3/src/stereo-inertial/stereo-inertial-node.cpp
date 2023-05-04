@@ -1,7 +1,4 @@
 #include "stereo-inertial-node.hpp"
-#include "cv-utils.hpp"
-#include "utils.hpp"
-#include <opencv2/core.hpp>
 
 #include <cstdint>
 #include <chrono>
@@ -9,17 +6,36 @@
 #include <mutex>
 #include <cstdio>
 #include <string>
+#include <vector>
+
+#include <opencv2/core.hpp>
+
+#include "utils.hpp"
+#include "cv-utils.hpp"
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
 
-namespace orbslam3 = ORB_SLAM3;
+using u8 = std::uint8_t;
+using u16 = std::uint16_t;
+using u32 = std::uint32_t;
+using u64 = std::uint64_t;
+using i8 = std::int8_t;
+using i16 = std::int16_t;
+using i32 = std::int32_t;
+using i64 = std::int64_t;
+using f32 = float;
+using f64 = double;
 
-StereoInertialNode::StereoInertialNode(orbslam3::System *SLAM, const std::string &settings_filepath, bool do_rectify_, bool do_equalize_) : Node("orbslam3"),
-                                                                                                                                            orbslam3_system(SLAM),
-                                                                                                                                            do_rectify(do_rectify_),
-                                                                                                                                            do_equalize(do_equalize_),
-                                                                                                                                            apply_clahe(do_equalize_)
+template <typename T>
+using Vec = std::vector<T>;
+using String = std::string;
+
+StereoInertialNode::StereoInertialNode(const std::string &node_name, orbslam3::System *SLAM, const std::string &settings_filepath, bool do_rectify_, bool do_equalize_) : Node(node_name),
+                                                                                                                                                                          orbslam3_system(SLAM),
+                                                                                                                                                                          do_rectify(do_rectify_),
+                                                                                                                                                                          do_equalize(do_equalize_),
+                                                                                                                                                                          apply_clahe(do_equalize_)
 {
     if (this->do_rectify)
     {
@@ -70,7 +86,7 @@ StereoInertialNode::StereoInertialNode(orbslam3::System *SLAM, const std::string
 
     this->sync_thread = new std::thread(&StereoInertialNode::sync_with_imu, this);
 
-    const auto topic_ns_prefix = std::string("/orbslam3/");
+    const auto topic_ns_prefix = std::string("orbslam3");
 
     // Publishers --------------------------------------------------------------------------------
     // {
@@ -82,16 +98,25 @@ StereoInertialNode::StereoInertialNode(orbslam3::System *SLAM, const std::string
     //         std::bind(&StereoInertialNode::pub_orb_features_from_current_frame_callback, this));
     // }
     {
-        std::string topic_name = topic_ns_prefix + "camera/pose";
-        auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+        const std::string topic_name = utils::format_topic_path(topic_ns_prefix, "camera", "pose");
+        const auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
         this->pub_camera_pose = this->create_publisher<PoseStampedMsg>(topic_name, qos);
         this->pub_camera_pose_timer = this->create_wall_timer(
             100ms,
             std::bind(&StereoInertialNode::pub_camera_pose_callback, this));
     }
-    this->pub_orb_features_timer = this->create_wall_timer(
-        100ms,
-        std::bind(&StereoInertialNode::pub_orb_features_callback, this));
+
+    {
+        const std::string topic_name = utils::format_topic_path(topic_ns_prefix, "orb_features");
+        const auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+        this->pub_orb_features = this->create_publisher<OrbFeaturesMsg>(topic_name, qos);
+        this->pub_orb_features_timer = this->create_wall_timer(
+            100ms,
+            std::bind(&StereoInertialNode::pub_orb_features_callback, this));
+    }
+    // this->pub_orb_features_timer = this->create_wall_timer(
+    //     100ms,
+    //     std::bind(&StereoInertialNode::pub_orb_features_callback, this));
 }
 
 auto StereoInertialNode::pub_orb_features_callback() -> void
@@ -101,29 +126,53 @@ auto StereoInertialNode::pub_orb_features_callback() -> void
     orbslam3::Tracking *tracker = this->orbslam3_system->get_tracker();
     orbslam3::Frame &current_frame = tracker->mCurrentFrame;
     // orbslam3::Frame& last_frame = tracker->mLastFrame;
-    std::vector<cv::KeyPoint> &keypoints_left = current_frame.mvKeys;
+    std::vector<cv::KeyPoint> &keypoints_left_img = current_frame.mvKeys;
     std::vector<cv::KeyPoint> &keypoints_right = current_frame.mvKeysRight;
 
-    cv::Mat &descriptors_left = current_frame.mDescriptors;
+    cv::Mat &descriptors_left_img = current_frame.mDescriptors;
     cv::Mat &descriptors_right = current_frame.mDescriptorsRight;
 
-    if (times_called % 100 == 0)
+    auto msg = OrbFeaturesMsg();
+    for (auto &keypoint : keypoints_left_img)
     {
-        std::printf("descriptors_left: \n");
-        pretty_print_mat(descriptors_left);
-        // std::printf("descriptors_right: \n");
-        // pretty_print_mat(descriptors_right);
-        // std::printf("keypoints_left: \n");
-        // for (auto &keypoint : keypoints_left)
-        // {
-        //     pretty_print_keypoint(keypoint);
-        // }
-        // std::printf("keypoints_right: \n");
-        // for (auto &keypoint : keypoints_right)
-        // {
-        //     pretty_print_keypoint(keypoint);
-        // }
+        auto kp = KeyPointMsg();
+        kp.x = keypoint.pt.x;
+        kp.y = keypoint.pt.y;
+        kp.size = keypoint.size;
+        kp.angle = keypoint.angle;
+        kp.response = keypoint.response;
+        kp.octave = keypoint.octave;
+        kp.class_id = keypoint.class_id;
+        msg.keypoints.push_back(kp);
     }
+
+    msg.descriptors.rows = descriptors_left_img.rows;
+    msg.descriptors.columns = descriptors_left_img.cols;
+    msg.descriptors.data.reserve(descriptors_left_img.rows * descriptors_left_img.cols);
+    // A cv::Mat is stored in row-major order, so by taking an iterator over the data, we are iterating over the rows
+    // of the matrix. This way the array is flattened.
+    msg.descriptors.data.assign(descriptors_left_img.begin<u8>(), descriptors_left_img.end<u8>());
+
+    this->pub_orb_features->publish(msg);
+
+    // if (times_called % 100 == 0)
+    // {
+    //     // std::printf("descriptors_left: \n");
+    //     // pretty_print_mat(descriptors_left);
+    //     // std::printf("descriptors_right: \n");
+    //     // pretty_print_mat(descriptors_right);
+
+    //     std::printf("keypoints_left: (size: %ld) \n", keypoints_left.size());
+    //     for (auto &keypoint : keypoints_left)
+    //     {
+    //         pretty_print_keypoint(keypoint);
+    //     }
+    //     // std::printf("keypoints_right: \n");
+    //     // for (auto &keypoint : keypoints_right)
+    //     // {
+    //     //     pretty_print_keypoint(keypoint);
+    //     // }
+    // }
 }
 
 auto StereoInertialNode::pub_camera_pose_callback() -> void

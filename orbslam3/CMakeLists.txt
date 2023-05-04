@@ -6,6 +6,10 @@ set(ENV{PYTHONPATH} "/opt/ros/foxy/lib/python3.8/site-packages/")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules)
 
+# Generate symbols for LSP indexing
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17) # for scoped_lock
@@ -27,7 +31,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(message_filters REQUIRED)
 
-# find_package(orbslam3_msgs REQUIRED)
+find_package(orbslam3_msgs REQUIRED)
 
 # These are required for ORB_SLAM3
 
@@ -92,7 +96,7 @@ target_link_libraries(stereo-inertial ${ORB_SLAM3_LIBRARIES})
 
 
 
-ament_target_dependencies(stereo-inertial rclcpp sensor_msgs cv_bridge ORB_SLAM3 Pangolin)
+ament_target_dependencies(stereo-inertial rclcpp sensor_msgs orbslam3_msgs cv_bridge ORB_SLAM3 Pangolin)
 # ament_target_dependencies(stereo-inertial rclcpp sensor_msgs cv_bridge Pangolin)
 
 # install(TARGETS mono rgbd stereo stereo-inertial

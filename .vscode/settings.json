@@ -80,5 +80,9 @@
         "/home/orin/ros2_ws/build/rnd-lugbot",
         "/home/orin/ros2_ws/install/rnd-lugbot/lib/python3.8/site-packages",
         "/opt/ros/foxy/lib/python3.8/site-packages"
-    ]
+    ],
+    "python.analysis.extraPaths": [
+        "/opt/ros/foxy/lib/python3.8/site-packages"
+    ],
+    "cmake.sourceDirectory": "/home/orin/ros2_ws/src/orbslam3/orbslam3"
 }
