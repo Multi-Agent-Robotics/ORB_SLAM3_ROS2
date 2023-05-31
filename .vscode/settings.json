@@ -84,5 +84,5 @@
     "python.analysis.extraPaths": [
         "/opt/ros/foxy/lib/python3.8/site-packages"
     ],
-    "cmake.sourceDirectory": "/home/orin/ros2_ws/src/orbslam3/orbslam3"
+    "cmake.sourceDirectory": "/home/kpbaks/development/multi-agent-robotics/ORB_SLAM3_ROS2/orbslam3"
 }
