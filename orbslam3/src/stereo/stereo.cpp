@@ -6,7 +6,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "stereo-slam-node.hpp"
 
-#include "System.h"
+#include "orbslam3/System.h"
 
 int main(int argc, char **argv)
 {
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
 
     bool visualization = true;
-    ORB_SLAM3::System pSLAM(argv[1], argv[2], ORB_SLAM3::System::STEREO, visualization);
+    orbslam3::System pSLAM(argv[1], argv[2], orbslam3::System::STEREO, visualization);
 
     auto node = std::make_shared<StereoSlamNode>(&pSLAM, argv[2], argv[3]);
     std::cout << "============================ " << std::endl;

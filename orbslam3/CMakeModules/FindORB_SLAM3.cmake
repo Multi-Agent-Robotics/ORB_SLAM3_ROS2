@@ -7,9 +7,9 @@
 #  e.g. `set( ORB_SLAM3_ROOT_DIR=~/ORB_SLAM3) `
 
 # Assert that the environment variable is set, otherwise abort
-if(NOT DEFINED ENV{ORB_SLAM3_ROOT_DIR})
-  message(FATAL_ERROR "Environment variable ORB_SLAM3_ROOT_DIR is not set. Please set it to the root directory of ORB_SLAM3.")
-endif()
+# if(NOT DEFINED ENV{ORB_SLAM3_ROOT_DIR})
+#   message(FATAL_ERROR "Environment variable ORB_SLAM3_ROOT_DIR is not set. Please set it to the root directory of ORB_SLAM3.")
+# endif()
 
 # Assert that ORB_SLAM3_ROOT_DIR is a valid directory, otherwise abort
 if (NOT EXISTS "$ENV{ORB_SLAM3_ROOT_DIR}")
@@ -23,11 +23,11 @@ set(ORB_SLAM3_ROOT_DIR "$ENV{ORB_SLAM3_ROOT_DIR}")
 # message(${ORB_SLAM3_ROOT_DIR}/3rdparty/DBoW2/DBoW2)
 
 # Find ORB_SLAM3
-find_path(ORB_SLAM3_INCLUDE_DIR NAMES System.h
+find_path(ORB_SLAM3_INCLUDE_DIR NAMES orbslam3/System.h
           PATHS ${ORB_SLAM3_ROOT_DIR}/include)
 
 find_library(ORB_SLAM3_LIBRARY NAMES ORB_SLAM3 libORB_SLAM3
-             PATHS ${ORB_SLAM3_ROOT_DIR}/lib)
+             PATHS ${ORB_SLAM3_ROOT_DIR}/build)
 
 # Find built-in DBoW2
 find_path(DBoW2_INCLUDE_DIR NAMES 3rdparty/DBoW2/DBoW2/BowVector.h

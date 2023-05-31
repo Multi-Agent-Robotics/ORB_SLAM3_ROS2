@@ -15,7 +15,7 @@
 
 #include <cv_bridge/cv_bridge.h>
 
-#include "System.h"
+#include "orbslam3/System.h"
 #include "Frame.h"
 #include "Map.h"
 #include "Tracking.h"
@@ -25,7 +25,7 @@
 class RgbdSlamNode : public rclcpp::Node
 {
 public:
-    RgbdSlamNode(ORB_SLAM3::System* pSLAM);
+    RgbdSlamNode(orbslam3::System* pSLAM);
 
     ~RgbdSlamNode();
 
@@ -35,7 +35,7 @@ private:
 
     void GrabRGBD(const sensor_msgs::msg::Image::SharedPtr msgRGB, const sensor_msgs::msg::Image::SharedPtr msgD);
 
-    ORB_SLAM3::System* m_SLAM;
+    orbslam3::System* m_SLAM;
 
     cv_bridge::CvImageConstPtr cv_ptrRGB;
     cv_bridge::CvImageConstPtr cv_ptrD;

@@ -5,7 +5,7 @@
 using std::placeholders::_1;
 using std::placeholders::_2;
 
-StereoSlamNode::StereoSlamNode(ORB_SLAM3::System* pSLAM, const string &strSettingsFile, const string &strDoRectify)
+StereoSlamNode::StereoSlamNode(orbslam3::System* pSLAM, const string &strSettingsFile, const string &strDoRectify)
 :   Node("ORB_SLAM3_ROS2"),
     m_SLAM(pSLAM)
 {

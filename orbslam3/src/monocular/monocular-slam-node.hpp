@@ -6,7 +6,7 @@
 
 #include <cv_bridge/cv_bridge.h>
 
-#include "System.h"
+#include "orbslam3/System.h"
 #include "Frame.h"
 #include "Map.h"
 #include "Tracking.h"
@@ -16,7 +16,7 @@
 class MonocularSlamNode : public rclcpp::Node
 {
 public:
-    MonocularSlamNode(ORB_SLAM3::System* pSLAM);
+    MonocularSlamNode(orbslam3::System* pSLAM);
 
     ~MonocularSlamNode();
 
@@ -25,7 +25,7 @@ private:
 
     void GrabImage(const sensor_msgs::msg::Image::SharedPtr msg);
 
-    ORB_SLAM3::System* m_SLAM;
+    orbslam3::System* m_SLAM;
 
     cv_bridge::CvImagePtr m_cvImPtr;
 

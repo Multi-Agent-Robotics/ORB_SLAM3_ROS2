@@ -340,7 +340,7 @@ auto StereoInertialNode::sync_with_imu() -> void
                 this->img_right_buf.pop();
             }
 
-            auto imu_measurements = std::vector<ORB_SLAM3::IMU::Point>();
+            auto imu_measurements = std::vector<orbslam3::IMU::Point>();
             {
                 std::scoped_lock lock(this->mutex_imu);
                 if (!this->imubuf.empty())
@@ -352,7 +352,7 @@ auto StereoInertialNode::sync_with_imu() -> void
                         const double t = utils::stamp2sec(this->imubuf.front()->header.stamp);
                         cv::Point3f acc(this->imubuf.front()->linear_acceleration.x, this->imubuf.front()->linear_acceleration.y, this->imubuf.front()->linear_acceleration.z);
                         cv::Point3f gyr(this->imubuf.front()->angular_velocity.x, this->imubuf.front()->angular_velocity.y, this->imubuf.front()->angular_velocity.z);
-                        imu_measurements.push_back(ORB_SLAM3::IMU::Point(acc, gyr, t));
+                        imu_measurements.push_back(orbslam3::IMU::Point(acc, gyr, t));
                         this->imubuf.pop();
                     }
                 }

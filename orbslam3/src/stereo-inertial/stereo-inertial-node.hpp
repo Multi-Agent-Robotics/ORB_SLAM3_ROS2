@@ -14,7 +14,7 @@
 #include "orbslam3_msgs/msg/descriptors.hpp"
 
 // ORB_SLAM3
-#include "System.h"
+#include "orbslam3/System.h"
 #include "Frame.h"
 #include "Map.h"
 #include "Tracking.h"
@@ -44,7 +44,7 @@ class StereoInertialNode final : public ros2::Node
 {
 
 public:
-    StereoInertialNode(const std::string &node_name, ORB_SLAM3::System *pSLAM, const std::string &settings_filepath, bool do_rectify, bool do_equalize);
+    StereoInertialNode(const std::string &node_name, orbslam3::System *pSLAM, const std::string &settings_filepath, bool do_rectify, bool do_equalize);
     ~StereoInertialNode();
 
 private:
@@ -76,7 +76,7 @@ private:
     ros2::TimerBase::SharedPtr pub_camera_pose_timer;
     auto pub_camera_pose_callback() -> void;
 
-    ORB_SLAM3::System *orbslam3_system;
+    orbslam3::System *orbslam3_system;
     std::thread *sync_thread;
 
     // IMU

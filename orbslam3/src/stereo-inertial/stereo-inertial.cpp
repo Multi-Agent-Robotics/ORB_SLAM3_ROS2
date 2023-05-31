@@ -10,7 +10,7 @@
 
 // #include "utils.hpp"
 
-#include "System.h" // ORB_SLAM3
+#include "orbslam3/orbslam3/System.h" // ORB_SLAM3
 
 using std::string;
 
@@ -79,7 +79,7 @@ auto main(int argc, char **argv) -> int
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     const bool use_viewer = true;
-    ORB_SLAM3::System orbslam3_system(path_to_vocabulary, path_to_settings, ORB_SLAM3::System::IMU_STEREO, use_viewer);
+    orbslam3::System orbslam3_system(path_to_vocabulary, path_to_settings, orbslam3::System::IMU_STEREO, use_viewer);
 
     auto node = std::make_shared<StereoInertialNode>("orbslam3", &orbslam3_system, path_to_settings, do_rectify, do_equalize);
     // utils::hr('=', 80);

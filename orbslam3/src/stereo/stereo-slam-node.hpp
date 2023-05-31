@@ -10,7 +10,7 @@
 
 #include <cv_bridge/cv_bridge.h>
 
-#include "System.h"
+#include "orbslam3/System.h"
 #include "Frame.h"
 #include "Map.h"
 #include "Tracking.h"
@@ -20,7 +20,7 @@
 class StereoSlamNode : public rclcpp::Node
 {
 public:
-    StereoSlamNode(ORB_SLAM3::System* pSLAM, const string &strSettingsFile, const string &strDoRectify);
+    StereoSlamNode(orbslam3::System* pSLAM, const string &strSettingsFile, const string &strDoRectify);
 
     ~StereoSlamNode();
 
@@ -30,7 +30,7 @@ private:
 
     void GrabStereo(const sensor_msgs::msg::Image::SharedPtr msgRGB, const sensor_msgs::msg::Image::SharedPtr msgD);
 
-    ORB_SLAM3::System* m_SLAM;
+    orbslam3::System* m_SLAM;
 
     bool doRectify;
     cv::Mat M1l,M2l,M1r,M2r;

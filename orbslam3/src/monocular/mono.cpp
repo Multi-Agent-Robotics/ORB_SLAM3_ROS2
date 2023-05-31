@@ -6,7 +6,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "monocular-slam-node.hpp"
 
-#include "System.h"
+#include "orbslam3/System.h"
 
 
 int main(int argc, char **argv)
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     // malloc error using new.. try shared ptr
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     bool visualization = true;
-    ORB_SLAM3::System SLAM(argv[1], argv[2], ORB_SLAM3::System::MONOCULAR, visualization);
+    orbslam3::System SLAM(argv[1], argv[2], orbslam3::System::MONOCULAR, visualization);
 
     auto node = std::make_shared<MonocularSlamNode>(&SLAM);
     std::cout << "============================ " << std::endl;\
