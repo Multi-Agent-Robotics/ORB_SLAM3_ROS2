@@ -84,5 +84,25 @@
     "python.analysis.extraPaths": [
         "/opt/ros/foxy/lib/python3.8/site-packages"
     ],
-    "cmake.sourceDirectory": "/home/kpbaks/development/multi-agent-robotics/ORB_SLAM3_ROS2/orbslam3"
+    "cmake.sourceDirectory": "/home/kpbaks/development/multi-agent-robotics/ORB_SLAM3_ROS2/orbslam3",
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#bba3ef",
+        "activityBar.background": "#bba3ef",
+        "activityBar.foreground": "#15202b",
+        "activityBar.inactiveForeground": "#15202b99",
+        "activityBarBadge.background": "#be5321",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "commandCenter.border": "#15202b99",
+        "sash.hoverBorder": "#bba3ef",
+        "statusBar.background": "#9b77e8",
+        "statusBar.foreground": "#15202b",
+        "statusBarItem.hoverBackground": "#7b4be1",
+        "statusBarItem.remoteBackground": "#9b77e8",
+        "statusBarItem.remoteForeground": "#15202b",
+        "titleBar.activeBackground": "#9b77e8",
+        "titleBar.activeForeground": "#15202b",
+        "titleBar.inactiveBackground": "#9b77e899",
+        "titleBar.inactiveForeground": "#15202b99"
+    },
+    "peacock.color": "#9b77e8"
 }
