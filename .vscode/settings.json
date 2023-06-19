@@ -84,7 +84,7 @@
     "python.analysis.extraPaths": [
         "/opt/ros/foxy/lib/python3.8/site-packages"
     ],
-    "cmake.sourceDirectory": "/home/kpbaks/development/multi-agent-robotics/ORB_SLAM3_ROS2/orbslam3",
+    "cmake.sourceDirectory": "/home/orin/ros2_ws/src/orbslam3/orbslam3_wrapper",
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#bba3ef",
         "activityBar.background": "#bba3ef",
@@ -104,5 +104,9 @@
         "titleBar.inactiveBackground": "#9b77e899",
         "titleBar.inactiveForeground": "#15202b99"
     },
-    "peacock.color": "#9b77e8"
+    "peacock.color": "#9b77e8",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "none"
 }

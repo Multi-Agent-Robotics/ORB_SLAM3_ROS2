@@ -286,7 +286,8 @@ auto StereoInertialNode::get_image(const ImageMsg::SharedPtr msg) -> cv::Mat
 
 auto StereoInertialNode::sync_with_imu() -> void
 {
-    const double max_time_diff = 0.01; // 10ms
+    // const double max_time_diff = 0.01; // 10ms
+    const double max_time_diff = 0.5; // 500ms
 
     while (true)
     {
@@ -320,15 +321,18 @@ auto StereoInertialNode::sync_with_imu() -> void
             const double dt = std::abs(time_img_left - time_img_right);
             if (dt > max_time_diff)
             {
+                std::cerr << "dt: " << dt << " time_img_left: " << time_img_left << " time_img_right: " << time_img_right << std::endl;
                 std::cerr << "big time difference between left and right image" << std::endl;
                 continue;
             }
 
-            if (time_img_left > utils::stamp2sec(this->imubuf.back()->header.stamp))
-            {
-                continue;
-            }
+            // if (time_img_left > utils::stamp2sec(this->imubuf.back()->header.stamp))
+            // {
+            //     std::cerr << "time_img_left: " << time_img_left << " time_imu: " << utils::stamp2sec(this->imubuf.back()->header.stamp) << std::endl;
+            //     continue;
+            // }
 
+            // Get left and right images
             {
                 std::scoped_lock lock(this->mutex_img_left);
                 img_left = get_image(this->img_left_buf.front());
@@ -340,6 +344,7 @@ auto StereoInertialNode::sync_with_imu() -> void
                 this->img_right_buf.pop();
             }
 
+            // Get imu measurements
             auto imu_measurements = std::vector<orbslam3::IMU::Point>();
             {
                 std::scoped_lock lock(this->mutex_imu);
@@ -370,6 +375,8 @@ auto StereoInertialNode::sync_with_imu() -> void
                 cv::remap(img_right, img_right, M1r_, M2r_, cv::INTER_LINEAR);
             }
 
+
+            // Update ORB-SLAM3
             this->orbslam3_system->TrackStereo(img_left, img_right, time_img_left, imu_measurements);
 
             std::this_thread::sleep_for(1ms);

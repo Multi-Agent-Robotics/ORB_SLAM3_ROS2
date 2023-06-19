@@ -1,0 +1,176 @@
+%YAML:1.0
+---
+# NOTE: Settings read from these files
+# https://github.com/kminoda/VIODE/blob/master/calibration_files/calibration.yaml
+# https://github.com/kminoda/VIODE/blob/master/calibration_files/cam0_pinhole.yaml
+# https://github.com/kminoda/VIODE/blob/master/calibration_files/cam1_pinhole.yaml
+
+File.version: 1.0 # REQUIRED
+
+Camera.type: "PinHole" # | "KannalaBrandt8" | "Rectified"
+
+Camera.width: 752
+Camera.height: 480
+
+# Found by reading their paper (https://arxiv.org/pdf/2102.05965.pdf)
+Camera.fps: 20.0
+
+# Found by reading their paper (https://arxiv.org/pdf/2102.05965.pdf)
+Camera.RGB: 1
+
+# stereo baseline (in meters) times fx
+# baseline = 0.05 m (Found by reading their paper (https://arxiv.org/pdf/2102.05965.pdf))
+# fx = 376.0
+# bf = 0.05 * 376.0 = 18.8
+Camera.bf: 18.8
+
+## Projection parameters for cam0
+# focal length in pixels
+Camera.fx: 376.0
+Camera.fy: 376.0
+
+# central point in pixels (principal point)
+Camera.cx: 376.0
+Camera.cy: 240.0
+
+# radial distortion coefficients
+Camera.k1: 0.0
+Camera.k2: 0.0
+# tangential distortion coefficients
+Camera.p1: 0.0
+Camera.p2: 0.0
+
+## Projection parameters for cam1
+# focal length in pixels
+Camera2.fx: 376.0
+Camera2.fy: 376.0
+
+# central point in pixels (principal point)
+Camera2.cx: 376.0
+Camera2.cy: 240.0
+
+# radial distortion coefficients
+Camera2.k1: 0.0
+Camera2.k2: 0.0
+# tangential distortion coefficients
+Camera2.p1: 0.0
+Camera2.p2: 0.0
+
+# Close/Far threshold. Baseline times.
+# NOTE: unknown this is just a guess
+ThDepth: 35.0
+
+# STEREO --------------------------------------------------------------------------------------------
+# Stereo.ThDepth: 50.0
+Stereo.T_c1_c2: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: f
+  data: [
+      1.0, 0.0, 0.0, 0.0,
+      0.0, 1.0, 0.0, 0.0,
+      0.0, 0.0, 1.0, 0.0,
+      0.0, 0.0, 0.0, 1.0
+    ]
+
+#--------------------------------------------------------------------------------------------
+# IMU noise
+#--------------------------------------------------------------------------------------------
+# Found by reading their paper (https://arxiv.org/pdf/2102.05965.pdf)
+IMU.Frequency: 200 # Hz
+# IMU.NoiseAcc: 0.2 # accelerometer measurement noise standard deviation.
+# IMU.NoiseGyro: 0.05 # gyroscope measurement noise standard deviation.
+# It is common practice to increase the random walk standard deviations provided by
+# the IMU manufacturer (say multiplying them by 10) to account for unmodelled effects
+# and improving the IMU initialization convergence.
+# IMU.AccWalk: 0.02 # accelerometer bias random work noise standard deviation.
+# IMU.GyroWalk: 4.0e-5 # gyroscope bias random work noise standard deviation.
+
+# TODO: test if this change makes a difference
+IMU.NoiseAcc: 0.01414213562373095
+IMU.NoiseGyro: 0.0035355339059327377
+IMU.AccWalk: 0.282842712474619
+IMU.GyroWalk: 0.0005656854249492381
+
+# acc_n:  0.01414213562373095
+# gyr_n:  0.0035355339059327377
+# acc_w:  0.282842712474619
+# gyr_w:  0.0005656854249492381
+
+IMU.fastInit: 1
+
+IMU.InsertKFsWhenLost: 1
+
+# Transformation from camera 0 to body-frame (imu)
+# IMU.T_b_c1: !!opencv-matrix
+
+# Tbc: !!opencv-matrix
+#   rows: 4
+#   cols: 4
+#   dt: f
+#   data: [
+#       -0.11725866, -0.20854666, -0.97095762, -0.0001198,
+#       -0.86021066, 0.50990769, -0.00563608, 0.00066236,
+#       0.49627414, 0.83456722, -0.23918515, 0.00302998,
+#       0.0, 0.0, 0.0, 1.0
+#     ]
+
+# Transformation from body-frame (imu) to left camera
+IMU.T_b_c1: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: d
+  data: [
+      0.0, 0.0, 1.0, 0.0,
+      1.0, 0.0, 0.0, 0.05,
+      0.0, 1.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 1.0 ]
+
+Tbc: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: d
+  data: [
+      0.0, 0.0, 1.0, 0.0,
+      1.0, 0.0, 0.0, 0.0,
+      0.0, 1.0, 0.0, 0.0,
+      0.0, 0.0, 0.0, 1.0 ]
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+ORBextractor.nFeatures: 1200 # number of features per image
+ORBextractor.scaleFactor: 1.2 # scale factor between levels in the scale pyramid
+ORBextractor.nLevels: 12 # number of levels in the scale pyramid
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast
+# ORBextractor.iniThFAST: 20
+ORBextractor.iniThFAST: 10
+# ORBextractor.minThFAST: 7
+ORBextractor.minThFAST: 3
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+# These are some parameters related to the ORB-SLAM3 user interface:
+#--------------------------------------------------------------------------------------------
+# size in which the KeyFrames are drawn in the map viewer.
+Viewer.KeyFrameSize: 0.05
+# line width of the KeyFrame drawing.
+Viewer.KeyFrameLineWidth: 1
+# line width of the covisibility graph.
+Viewer.GraphLineWidth: 0.9
+# size of the MapPoint drawing.
+Viewer.PointSize: 5
+# size in which the current camera is drawn in the map viewer
+Viewer.CameraSize: 0.08
+# line width of the current camera drawing.
+Viewer.CameraLineWidth: 3
+# starting view point of the map viewer.
+Viewer.ViewpointX: 0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500
+# OPTIONAL
+Viewer.imageViewScale: 1.0

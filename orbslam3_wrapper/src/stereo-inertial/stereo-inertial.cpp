@@ -10,7 +10,7 @@
 
 // #include "utils.hpp"
 
-#include "orbslam3/orbslam3/System.h" // ORB_SLAM3
+#include "orbslam3/System.h" // ORB_SLAM3
 
 using std::string;
 
