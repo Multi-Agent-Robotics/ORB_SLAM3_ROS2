@@ -7,10 +7,10 @@
 # When the variables are commented, the system doesn't load a previous session or not store the current one
 
 # If the LoadFile doesn't exist, the system give a message and create a new Atlas from scratch
-System.LoadAtlasFromFile: "V101_stereo.osa"
+# System.LoadAtlasFromFile: "V101_stereo.osa"
 
 # The store file is created from the current session, if a file with the same name exists it is deleted
-System.SaveAtlasToFile: "V101_to_V102_stereo.osa"
+# System.SaveAtlasToFile: "V101_to_V102_stereo.osa"
 
 #--------------------------------------------------------------------------------------------
 # Camera Parameters. Adjust them!

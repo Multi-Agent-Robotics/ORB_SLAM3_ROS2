@@ -7,10 +7,12 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <opencv2/core.hpp>
 
 #include "utils.hpp"
+#include "log-macro.hpp"
 #include "cv-utils.hpp"
 
 using namespace std::chrono_literals;
@@ -31,6 +33,8 @@ template <typename T>
 using Vec = std::vector<T>;
 using String = std::string;
 
+
+
 StereoInertialNode::StereoInertialNode(const std::string &node_name, orbslam3::System *SLAM, const std::string &settings_filepath, bool do_rectify_, bool do_equalize_) : Node(node_name),
                                                                                                                                                                           orbslam3_system(SLAM),
                                                                                                                                                                           do_rectify(do_rectify_),
@@ -39,6 +43,7 @@ StereoInertialNode::StereoInertialNode(const std::string &node_name, orbslam3::S
 {
     if (this->do_rectify)
     {
+        DEBUG_LOG(stderr, "applying rectification");
         // Load settings related to stereo calibration
         auto settings = cv::FileStorage(settings_filepath, cv::FileStorage::READ);
         if (!settings.isOpened())
@@ -80,7 +85,7 @@ StereoInertialNode::StereoInertialNode(const std::string &node_name, orbslam3::S
     auto keeplast = [](std::size_t) -> rclcpp::QoS
     { return rclcpp::QoS(rclcpp::KeepLast(100)); };
 
-    this->sub_imu = this->create_subscription<ImuMsg>("imu", keeplast(1000), std::bind(&StereoInertialNode::grab_imu, this, _1));
+    this->sub_imu = this->create_subscription<ImuMsg>("imu", keeplast(100), std::bind(&StereoInertialNode::grab_imu, this, _1));
     this->sub_img_left = this->create_subscription<ImageMsg>("camera/left", keeplast(100), std::bind(&StereoInertialNode::grab_image_left, this, _1));
     this->sub_img_right = this->create_subscription<ImageMsg>("camera/right", keeplast(100), std::bind(&StereoInertialNode::grab_image_right, this, _1));
 
@@ -97,23 +102,23 @@ StereoInertialNode::StereoInertialNode(const std::string &node_name, orbslam3::S
     //         100ms,
     //         std::bind(&StereoInertialNode::pub_orb_features_from_current_frame_callback, this));
     // }
-    {
-        const std::string topic_name = utils::format_topic_path(topic_ns_prefix, "camera", "pose");
-        const auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
-        this->pub_camera_pose = this->create_publisher<PoseStampedMsg>(topic_name, qos);
-        this->pub_camera_pose_timer = this->create_wall_timer(
-            100ms,
-            std::bind(&StereoInertialNode::pub_camera_pose_callback, this));
-    }
+    // {
+    //     const std::string topic_name = utils::format_topic_path(topic_ns_prefix, "camera", "pose");
+    //     const auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+    //     this->pub_camera_pose = this->create_publisher<PoseStampedMsg>(topic_name, qos);
+    //     this->pub_camera_pose_timer = this->create_wall_timer(
+    //         100ms,
+    //         std::bind(&StereoInertialNode::pub_camera_pose_callback, this));
+    // }
 
-    {
-        const std::string topic_name = utils::format_topic_path(topic_ns_prefix, "orb_features");
-        const auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
-        this->pub_orb_features = this->create_publisher<OrbFeaturesMsg>(topic_name, qos);
-        this->pub_orb_features_timer = this->create_wall_timer(
-            100ms,
-            std::bind(&StereoInertialNode::pub_orb_features_callback, this));
-    }
+    // {
+    //     const std::string topic_name = utils::format_topic_path(topic_ns_prefix, "orb_features");
+    //     const auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+    //     this->pub_orb_features = this->create_publisher<OrbFeaturesMsg>(topic_name, qos);
+    //     this->pub_orb_features_timer = this->create_wall_timer(
+    //         100ms,
+    //         std::bind(&StereoInertialNode::pub_orb_features_callback, this));
+    // }
     // this->pub_orb_features_timer = this->create_wall_timer(
     //     100ms,
     //     std::bind(&StereoInertialNode::pub_orb_features_callback, this));
@@ -294,92 +299,101 @@ auto StereoInertialNode::sync_with_imu() -> void
         // Declared here to avoid memory allocation in the loop
         cv::Mat img_left, img_right;
         double time_img_left = 0, time_img_right = 0;
+        const bool left_images_available = !this->img_left_buf.empty();
+        const bool right_images_available = !this->img_right_buf.empty();
+        const bool images_available = left_images_available && right_images_available;
+        const bool imu_measurements_available = !this->imubuf.empty();
 
-        if (!this->img_left_buf.empty() && !this->img_right_buf.empty() && !this->imubuf.empty())
-        {
-            time_img_left = utils::stamp2sec(this->img_left_buf.front()->header.stamp);
-            time_img_right = utils::stamp2sec(this->img_right_buf.front()->header.stamp);
-
-            {
-                std::scoped_lock lock(this->mutex_img_right);
-                while ((time_img_left - time_img_right) > max_time_diff && this->img_right_buf.size() > 1)
-                {
-                    this->img_right_buf.pop();
-                    time_img_right = utils::stamp2sec(this->img_right_buf.front()->header.stamp);
-                }
-            }
-
-            {
-                std::scoped_lock lock(this->mutex_img_left);
-                while ((time_img_right - time_img_left) > max_time_diff && this->img_left_buf.size() > 1)
-                {
-                    this->img_left_buf.pop();
-                    time_img_left = utils::stamp2sec(this->img_left_buf.front()->header.stamp);
-                }
-            }
-
-            const double dt = std::abs(time_img_left - time_img_right);
-            if (dt > max_time_diff)
-            {
-                std::cerr << "dt: " << dt << " time_img_left: " << time_img_left << " time_img_right: " << time_img_right << std::endl;
-                std::cerr << "big time difference between left and right image" << std::endl;
-                continue;
-            }
-
-            // if (time_img_left > utils::stamp2sec(this->imubuf.back()->header.stamp))
-            // {
-            //     std::cerr << "time_img_left: " << time_img_left << " time_imu: " << utils::stamp2sec(this->imubuf.back()->header.stamp) << std::endl;
-            //     continue;
-            // }
-
-            // Get left and right images
-            {
-                std::scoped_lock lock(this->mutex_img_left);
-                img_left = get_image(this->img_left_buf.front());
-                this->img_left_buf.pop();
-            }
-            {
-                std::scoped_lock lock(this->mutex_img_right);
-                img_right = get_image(this->img_right_buf.front());
-                this->img_right_buf.pop();
-            }
-
-            // Get imu measurements
-            auto imu_measurements = std::vector<orbslam3::IMU::Point>();
-            {
-                std::scoped_lock lock(this->mutex_imu);
-                if (!this->imubuf.empty())
-                {
-                    // Load imu measurements from buffer
-                    imu_measurements.clear();
-                    while (!this->imubuf.empty() && utils::stamp2sec(this->imubuf.front()->header.stamp) <= time_img_left)
-                    {
-                        const double t = utils::stamp2sec(this->imubuf.front()->header.stamp);
-                        cv::Point3f acc(this->imubuf.front()->linear_acceleration.x, this->imubuf.front()->linear_acceleration.y, this->imubuf.front()->linear_acceleration.z);
-                        cv::Point3f gyr(this->imubuf.front()->angular_velocity.x, this->imubuf.front()->angular_velocity.y, this->imubuf.front()->angular_velocity.z);
-                        imu_measurements.push_back(orbslam3::IMU::Point(acc, gyr, t));
-                        this->imubuf.pop();
-                    }
-                }
-            }
-
-            if (this->apply_clahe)
-            {
-                this->clahe->apply(img_left, img_left);
-                this->clahe->apply(img_right, img_right);
-            }
-
-            if (this->do_rectify)
-            {
-                cv::remap(img_left, img_left, M1l_, M2l_, cv::INTER_LINEAR);
-                cv::remap(img_right, img_right, M1r_, M2r_, cv::INTER_LINEAR);
-            }
-
-
-            // Update ORB-SLAM3
-            this->orbslam3_system->TrackStereo(img_left, img_right, time_img_left, imu_measurements);
-
+        // if (!this->img_left_buf.empty() && !this->img_right_buf.empty() && !this->imubuf.empty())
+        if (! imu_measurements_available || ! images_available) {
             std::this_thread::sleep_for(1ms);
+            continue;
         }
+
+        time_img_left = utils::stamp2sec(this->img_left_buf.front()->header.stamp);
+        time_img_right = utils::stamp2sec(this->img_right_buf.front()->header.stamp);
+        DEBUG_LOG(stderr, "time_img_left: %f, time_img_right: %f", time_img_left, time_img_right);
+
+        {
+            std::scoped_lock lock(this->mutex_img_right);
+            while ((time_img_left - time_img_right) > max_time_diff && this->img_right_buf.size() > 1)
+            {
+                this->img_right_buf.pop();
+                time_img_right = utils::stamp2sec(this->img_right_buf.front()->header.stamp);
+            }
+        }
+
+        {
+            std::scoped_lock lock(this->mutex_img_left);
+            while ((time_img_right - time_img_left) > max_time_diff && this->img_left_buf.size() > 1)
+            {
+                this->img_left_buf.pop();
+                time_img_left = utils::stamp2sec(this->img_left_buf.front()->header.stamp);
+            }
+        }
+
+        const double dt = std::abs(time_img_left - time_img_right);
+        if (dt > max_time_diff)
+        {
+            DEBUG_LOG(stderr, "dt: %f time_img_left: %f time_img_right: %f", dt, time_img_left, time_img_right);
+            DEBUG_LOG(stderr, "to big time difference between left and right image");
+            continue;
+        }
+
+        // if (time_img_left > utils::stamp2sec(this->imubuf.back()->header.stamp))
+        // {
+        //     std::cerr << "time_img_left: " << time_img_left << " time_imu: " << utils::stamp2sec(this->imubuf.back()->header.stamp) << std::endl;
+        //     continue;
+        // }
+
+        // Get left and right images
+        {
+            std::scoped_lock lock(this->mutex_img_left);
+            img_left = get_image(this->img_left_buf.front());
+            this->img_left_buf.pop();
+        }
+        {
+            std::scoped_lock lock(this->mutex_img_right);
+            img_right = get_image(this->img_right_buf.front());
+            this->img_right_buf.pop();
+        }
+
+        // Get imu measurements
+        auto imu_measurements = std::vector<orbslam3::IMU::Point>();
+        {
+            std::scoped_lock lock(this->mutex_imu);
+            if (!this->imubuf.empty())
+            {
+                // Load imu measurements from buffer
+                // imu_measurements.clear();
+                while (!this->imubuf.empty() && utils::stamp2sec(this->imubuf.front()->header.stamp) <= time_img_left)
+                {
+                    const double t = utils::stamp2sec(this->imubuf.front()->header.stamp);
+                    cv::Point3f acc(this->imubuf.front()->linear_acceleration.x, this->imubuf.front()->linear_acceleration.y, this->imubuf.front()->linear_acceleration.z);
+                    cv::Point3f gyr(this->imubuf.front()->angular_velocity.x, this->imubuf.front()->angular_velocity.y, this->imubuf.front()->angular_velocity.z);
+                    imu_measurements.push_back(orbslam3::IMU::Point(acc, gyr, t));
+                    DEBUG_LOG(stderr, "imu_measurements.size(): %lu", imu_measurements.size());
+                    this->imubuf.pop();
+                }
+            }
+        }
+
+        if (this->apply_clahe)
+        {
+            this->clahe->apply(img_left, img_left);
+            this->clahe->apply(img_right, img_right);
+        }
+
+        if (this->do_rectify)
+        {
+            cv::remap(img_left, img_left, M1l_, M2l_, cv::INTER_LINEAR);
+            cv::remap(img_right, img_right, M1r_, M2r_, cv::INTER_LINEAR);
+        }
+
+
+        // Update ORB-SLAM3
+        this->orbslam3_system->TrackStereo(img_left, img_right, time_img_left, imu_measurements);
+
+        std::this_thread::sleep_for(1ms);
     }
 }
