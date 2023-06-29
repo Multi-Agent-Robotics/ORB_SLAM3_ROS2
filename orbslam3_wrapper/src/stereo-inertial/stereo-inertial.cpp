@@ -1,26 +1,26 @@
-#include <iostream>
 #include <algorithm>
-#include <fstream>
 #include <chrono>
-#include <string>
 #include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #include "rclcpp/rclcpp.hpp"
 #include "stereo-inertial-node.hpp"
 
 // #include "utils.hpp"
 
-#include "orbslam3/System.h" // ORB_SLAM3
+#include "System.h" // ORB_SLAM3
 
 using std::string;
 
 namespace ros2 = rclcpp;
 
-auto main(int argc, char **argv) -> int
-{
-    if (argc < 4)
-    {
-        std::cerr << "Usage: ros2 run orbslam stereo path_to_vocabulary path_to_settings do_rectify [do_equalize]" << std::endl;
+auto main(int argc, char **argv) -> int {
+    if (argc < 4) {
+        std::cerr << "Usage: ros2 run orbslam stereo path_to_vocabulary "
+                     "path_to_settings do_rectify [do_equalize]"
+                  << std::endl;
         ros2::shutdown();
         return 1;
     }
@@ -28,8 +28,7 @@ auto main(int argc, char **argv) -> int
     const string path_to_vocabulary = string(argv[1]);
     const string path_to_settings = string(argv[2]);
 
-    auto str2bool = [](const string &s) -> bool
-    {
+    auto str2bool = [](const string &s) -> bool {
         return s == "true" ? true : false;
     };
 
@@ -48,28 +47,26 @@ auto main(int argc, char **argv) -> int
         bool failed = false;
 
         // Check settings file and vocabulary file exists
-        auto file_exists = [](const std::string &path)
-        {
+        auto file_exists = [](const std::string &path) {
             auto f = std::ifstream(path.c_str());
             bool exists = f.good();
             f.close();
             return exists;
         };
 
-        if (!file_exists(path_to_vocabulary))
-        {
-            std::printf("Vocabulary file does not exist at: %s\n", path_to_vocabulary.c_str());
+        if (!file_exists(path_to_vocabulary)) {
+            std::printf("Vocabulary file does not exist at: %s\n",
+                        path_to_vocabulary.c_str());
             failed = true;
         }
 
-        if (!file_exists(path_to_settings))
-        {
-            std::printf("Settings file does not exist at: %s\n", path_to_settings.c_str());
+        if (!file_exists(path_to_settings)) {
+            std::printf("Settings file does not exist at: %s\n",
+                        path_to_settings.c_str());
             failed = true;
         }
 
-        if (failed)
-        {
+        if (failed) {
             ros2::shutdown();
             return 1;
         }
@@ -77,11 +74,16 @@ auto main(int argc, char **argv) -> int
 
     ros2::init(argc, argv);
 
-    // Create SLAM system. It initializes all system threads and gets ready to process frames.
+    // Create SLAM system. It initializes all system threads and gets ready to
+    // process frames.
     const bool use_viewer = true;
-    orbslam3::System orbslam3_system(path_to_vocabulary, path_to_settings, orbslam3::System::IMU_STEREO, use_viewer);
+    ORB_SLAM3::System orbslam3_system(path_to_vocabulary, path_to_settings,
+                                      ORB_SLAM3::System::IMU_STEREO,
+                                      use_viewer);
 
-    auto node = std::make_shared<StereoInertialNode>("orbslam3", &orbslam3_system, path_to_settings, do_rectify, do_equalize);
+    auto node = std::make_shared<StereoInertialNode>(
+        "orbslam3_wrapper", &orbslam3_system, path_to_settings, do_rectify,
+        do_equalize);
     // utils::hr('=', 80);
 
     ros2::spin(node);

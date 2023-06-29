@@ -15,10 +15,15 @@
 
 // ORB_SLAM3
 
-#include "orbslam3/Frame.h"
-#include "orbslam3/Map.h"
-#include "orbslam3/System.h"
-#include "orbslam3/Tracking.h"
+// #include "orbslam3/Frame.h"
+// #include "orbslam3/Map.h"
+// #include "orbslam3/System.h"
+// #include "orbslam3/Tracking.h"
+
+#include "Frame.h"
+#include "Map.h"
+#include "System.h"
+#include "Tracking.h"
 
 #include "Eigen/Core" // Eigen::Vector3f
 // #include "sophus/se3.hpp" // Sophus::SE3<float>
@@ -42,7 +47,7 @@ template <typename T> using Publisher = ros2::Publisher<T>;
 class StereoInertialNode final : public ros2::Node {
 
   public:
-    StereoInertialNode(const std::string &node_name, orbslam3::System *pSLAM,
+    StereoInertialNode(const std::string &node_name, ORB_SLAM3::System *pSLAM,
                        const std::string &settings_filepath, bool do_rectify,
                        bool do_equalize);
     ~StereoInertialNode();
@@ -60,9 +65,9 @@ class StereoInertialNode final : public ros2::Node {
     Subscriber<ImageMsg>::SharedPtr sub_img_right;
 
     // ORB features
-    Publisher<OrbFeaturesMsg>::SharedPtr pub_orb_features;
-    ros2::TimerBase::SharedPtr pub_orb_features_timer;
-    auto pub_orb_features_callback() -> void;
+    // Publisher<OrbFeaturesMsg>::SharedPtr pub_orb_features;
+    // ros2::TimerBase::SharedPtr pub_orb_features_timer;
+    // auto pub_orb_features_callback() -> void;
 
     // Publisher<> pub_tracked_map_points;
     // ros2::TimerBase::SharedPtr pub_tracked_map_points_timer;
@@ -73,11 +78,11 @@ class StereoInertialNode final : public ros2::Node {
     // pub_orb_features_from_current_frame_timer;
 
     // Camera pose
-    Publisher<PoseStampedMsg>::SharedPtr pub_camera_pose;
-    ros2::TimerBase::SharedPtr pub_camera_pose_timer;
-    auto pub_camera_pose_callback() -> void;
+    // Publisher<PoseStampedMsg>::SharedPtr pub_camera_pose;
+    // ros2::TimerBase::SharedPtr pub_camera_pose_timer;
+    // auto pub_camera_pose_callback() -> void;
 
-    orbslam3::System *orbslam3_system;
+    ORB_SLAM3::System *orbslam3_system;
     std::thread *sync_thread;
 
     // IMU

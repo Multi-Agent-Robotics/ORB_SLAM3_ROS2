@@ -158,6 +158,8 @@ IMU.NoiseGyro: 8.6e-05 # rad/s/sqrt(Hz)
 IMU.AccWalk: 8.0e-05 # m/s^2.5
 IMU.GyroWalk: 2.2e-06 # rad/s^1.5
 
+IMU.fastInit: true
+
 # Transformation from camera 0 to body-frame (imu)
 # numbers gotten from calibrating the ZED Mini camera with the `kalibr` tool
 IMU.T_b_c1: !!opencv-matrix

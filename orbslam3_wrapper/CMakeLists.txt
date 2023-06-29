@@ -4,12 +4,14 @@ project (orbslam3_wrapper
     LANGUAGES CXX)
 
 add_executable (stereo-inertial "")
+add_executable (stereo "")
 
 include (cmake/printers.cmake)
-include (cmake/CPM.cmake)
+
+# include (cmake/CPM.cmake)
 
 # as the tag is in an unusual format, we need to explicitly specify the version
-CPMAddPackage ("gh:jbeder/yaml-cpp#yaml-cpp-0.6.3@0.6.3")
+# CPMAddPackage ("gh:jbeder/yaml-cpp#yaml-cpp-0.6.3@0.6.3")
 
 # You should set the PYTHONPATH to your own python site-packages path
 if (NOT ENV{PYTHONPATH})
@@ -49,11 +51,12 @@ find_package (orbslam3_msgs REQUIRED)
 
 find_package (OpenCV 4.2.0 REQUIRED)
 find_package (Eigen3 3.1.0 REQUIRED)
+find_package (Pangolin REQUIRED)
 
-find_package (orbslam3 CONFIG REQUIRED)
+# find_package (orbslam3 CONFIG REQUIRED)
 
 # as the tag is in an unusual format, we need to explicitly specify the version
-CPMAddPackage ("gh:jbeder/yaml-cpp#yaml-cpp-0.6.3@0.6.3")
+# CPMAddPackage ("gh:jbeder/yaml-cpp#yaml-cpp-0.6.3@0.6.3")
 
 # print_all_variables_with_postfix (INCLUDE_DIRS)
 target_sources (stereo-inertial PUBLIC
@@ -62,32 +65,72 @@ target_sources (stereo-inertial PUBLIC
     src/stereo-inertial/stereo-inertial-node.hpp
 )
 
+target_sources (stereo PUBLIC
+    src/stereo/stereo.cpp
+    src/stereo/stereo-slam-node.cpp
+    src/stereo/stereo-slam-node.hpp
+)
+
+target_link_libraries (stereo-inertial
+
+    # orbslam3
+    ~/repos/ORB_SLAM3/lib/libORB_SLAM3.so
+    ${Pangolin_LIBRARIES}
+)
+
+target_link_libraries (stereo
+    # orbslam3
+    ~/repos/ORB_SLAM3/lib/libORB_SLAM3.so
+    ${Pangolin_LIBRARIES}
+)
+
+set (ORB_SLAM3_INCLUDE_DIRS
+    ~/repos/ORB_SLAM3 # for Thirdparty/**.h
+    ~/repos/ORB_SLAM3/include
+    ~/repos/ORB_SLAM3/src
+    ~/repos/ORB_SLAM3/include/System
+    ~/repos/ORB_SLAM3/include/CameraModels
+)
+
 target_include_directories (stereo-inertial
     PUBLIC
     src
     include
-    ${orbslam3_INCLUDE_DIRS}
+
+    # ${orbslam3_INCLUDE_DIRS}
+    ${ORB_SLAM3_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
+    ${Pangolin_INCLUDE_DIRS}
+)
+
+target_include_directories (stereo
+    PUBLIC
+    src
+    include
+
+    # ${orbslam3_INCLUDE_DIRS}
+    ${ORB_SLAM3_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
+    ${Pangolin_INCLUDE_DIRS}
 )
 
 target_compile_features (stereo-inertial PUBLIC cxx_std_17)
-
-get_target_property (SO_LOCATION orbslam3 IMPORTED_LOCATION_NOCONFIG)
-message (STATUS "SO_LOCATION: ${SO_LOCATION}")
-
-target_link_libraries (stereo-inertial
-    orbslam3
-    ${Pangolin_LIBRARIES}
-)
+target_compile_features (stereo PUBLIC cxx_std_17)
 
 target_compile_options (stereo-inertial PRIVATE
     -Wno-deprecated-declarations
 )
 
-ament_target_dependencies (stereo-inertial rclcpp sensor_msgs orbslam3_msgs geometry_msgs cv_bridge message_filters)
+target_compile_options (stereo PRIVATE
+    -Wno-deprecated-declarations
+)
 
-install (TARGETS stereo-inertial
+ament_target_dependencies (stereo-inertial rclcpp sensor_msgs orbslam3_msgs geometry_msgs cv_bridge message_filters)
+ament_target_dependencies (stereo rclcpp sensor_msgs orbslam3_msgs geometry_msgs cv_bridge message_filters)
+
+install (TARGETS stereo-inertial stereo
     DESTINATION lib/${PROJECT_NAME}
 )
 
